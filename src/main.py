@@ -17,7 +17,8 @@ from offset import Offset
 from offset import getOffsets
 from propagation import Propagation
 from grid_state import GridState
-from metatree import *
+from metatree import MetaTreeBuilder, MetaNode, Adjacency
+import util
 
 from animator import Animator
 
@@ -43,34 +44,6 @@ np.random.seed(1337)  # Fixing the seed ensures same generation patterns, good f
 tileset_path = Path().cwd() / "tilesets" / "tileset-dag-paper-final-adv" # The tileset to load; should point to the root folder
 
 
-# Data classes
-##############
-
- 
-# ====================================
-# = Convenience methods
-# ====================================
-def fancy_bmat(M):
-    """
-    Prints a numpy boolean array with fancy unicode squares.
-    """
-    try:
-        f = lambda x : '◼' if x else '◻' 
-        return np.vectorize(f)(M)
-    except:
-        return np.array([])
-
-def clamp(n, smallest, largest): 
-    """
-    Clamps a number 'n' between the given minimum/maximum values.
-    """
-    return max(smallest, min(n, largest))
-
-def color(r, g, b):
-    """
-    Converts a floating-point rgb color into a uint8 color (0.0-1.0 --> 0-255).
-    """
-    return (255 * np.array((r, g, b))).astype(int)
 
 # TODO: Make this un-retarded
 # - Use color as ID, instead of doing some error-prone mapping
@@ -263,7 +236,7 @@ for o in offsets:
     
     # Prints the resulting ADJ matrix for the given offset.
     print(o)
-    print(fancy_bmat(ADJ[o]))
+    print(util.fancy_bmat(ADJ[o]))
 
 # Augmented adjacency matrix
 
@@ -296,7 +269,7 @@ for o in offsets:
     # ADJ_AUG[o][2, 5] = False
     # ADJ_AUG[o][5, 2] = False
     print(o)
-    print(fancy_bmat(ADJ_AUG[o]))
+    print(util.fancy_bmat(ADJ_AUG[o]))
 
     
     
@@ -359,7 +332,7 @@ def handle_input():
     keys = pygame.key.get_pressed()
     numeric_key_codes = {pygame.K_0, pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9, pygame.K_0}
     mx, my = pygame.mouse.get_pos()
-    i, j = clamp(IMAGE_X*mx//WINDOW_SIZE[0], 0, IMAGE_X-1), clamp(IMAGE_Y*my//WINDOW_SIZE[1], 0, IMAGE_Y-1)
+    i, j = util.clamp(IMAGE_X*mx//WINDOW_SIZE[0], 0, IMAGE_X-1), util.clamp(IMAGE_Y*my//WINDOW_SIZE[1], 0, IMAGE_Y-1)
     size = marker_size
     preview[i-size:i+size+1, j-size:j+size+1] = True
     for event in pygame.event.get():
