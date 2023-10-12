@@ -376,7 +376,7 @@ class GridState:
 
         # Cardinality is ensured if the neighbour is a direct neighbour (diff == 1)
         # and if not both coordinates are the same, to exclude self and corners.
-        return diff_x == 1 != diff_y == 1
+        return (diff_x == 1) != (diff_y == 1)
     
     def propagate(self):
         """
