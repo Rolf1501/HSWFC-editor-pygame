@@ -328,46 +328,56 @@ class GridState:
         """
         reset = True
         while self.deprop_queue:
-                current, instigator, depth = self.deprop_queue.popleft()
-                # For recording the (de)propagation wave
-                if Animator().record:
-                    Animator().store_anim(depth, *current,[0,0,255], reset)
-                    reset = False
-                    
-                # Get the cell's neighbours that are not fully reset already.
-                i, j = current
-                xs, xe = (max(i-1, 0), min(i+1+1, self.grid_x))
-                ys, ye = (max(j-1, 0), min(j+1+1, self.grid_y))
-                neighbours = [n for n in map(tuple, self.index[xs:xe, ys:ye].reshape(-1, 2)) if self.entropy[n]<self.MAX_ENTROPY]
-                for neighbour in neighbours:
-                    x, y = neighbour
-                    # offset = [i - x, j - y]
-                    offset = (i - x, j - y)
+            current, instigator, depth = self.deprop_queue.popleft()
+            # For recording the (de)propagation wave
+            if Animator().record:
+                Animator().store_anim(depth, *current,[0,0,255], reset)
+                reset = False
+                
+            # Get the cell's neighbours that are not fully reset already.
+            i, j = current
+            xs, xe = (max(i-1, 0), min(i+1+1, self.grid_x))
+            ys, ye = (max(j-1, 0), min(j+1+1, self.grid_y))
+            neighbours = [n for n in map(tuple, self.index[xs:xe, ys:ye].reshape(-1, 2)) if self.entropy[n]<self.MAX_ENTROPY]
+            for neighbour in neighbours:
+                x, y = neighbour
+                # offset = (i - x, j - y)
 
-                    # Ensure we have an offset that corresponds to the adjacencies that we check (Up/Down/Left/Right)
-                    # The list comprehension above also includes the corners (1,1), (-1,1) etc, and this is how we filter them.
-                    # TODO: Preferably come up with a clearer way of doing this...
-                    # if offset not in self.offsets:
-                    if abs(i - x) > 0 and abs(j - y) > 0:
-                        continue
-                    
-                    # State of the neighbour cell before propagation
-                    pre = self.choices[x, y, :].copy()
-                    
-                    # State of the neighbour cell after propagation:
-                    #   We simply allow everything in all the subtrees of the allowed tiles again
-                    post = pre | (self.SM[self.chosen[x, y]] )
+                
+                # TODO: Preferably come up with a clearer way of doing this...
+                # if offset not in self.offsets:
 
-                    # If there was a change in the neighbour...
-                    if np.any(pre != post):
-                        # Set the new choices, and append the neighbour to the deprop queue
-                        self.choices[x, y, :] = post
-                        self.deprop_queue.append(P(neighbour, instigator, depth+1))
-                    # Otherwise we are done, and can append this cell to the propagation queue as a starting point
-                    else:
-                        self.queue.append(P(neighbour, current, depth+1))
+                # Ensure we have an offset that corresponds to the adjacencies that we check (Up/Down/Left/Right)
+                # The list comprehension above also includes the corners (1,1), (-1,1) etc, and this is how we filter them.
+                if not self.is_cardinal_neighour(i, j, x, y):
+                    continue
+                
+                # State of the neighbour cell before propagation
+                pre = self.choices[x, y, :].copy()
+                
+                # State of the neighbour cell after propagation:
+                #   We simply allow everything in all the subtrees of the allowed tiles again
+                post = pre | (self.SM[self.chosen[x, y]] )
 
+                # If there was a change in the neighbour...
+                if np.any(pre != post):
+                    # Set the new choices, and append the neighbour to the deprop queue
+                    self.choices[x, y, :] = post
+                    self.deprop_queue.append(P(neighbour, instigator, depth+1))
+                # Otherwise we are done, and can append this cell to the propagation queue as a starting point
+                else:
+                    self.queue.append(P(neighbour, current, depth+1))
 
+    @staticmethod
+    def is_cardinal_neighour(this_x, this_y, that_x, that_y):
+        # TODO: automate this for 3D.
+        diff_x = abs(this_x - that_x)
+        diff_y = abs(this_y - that_y)
+
+        # Cardinality is ensured if the neighbour is a direct neighbour (diff == 1)
+        # and if not both coordinates are the same, to exclude self and corners.
+        return diff_x == 1 != diff_y == 1
+    
     def propagate(self):
         """
         Propagates all cells that are in the propagation queue.
@@ -389,13 +399,11 @@ class GridState:
             neighbours = [n for n in map(tuple, self.index[xs:xe, ys:ye].reshape(-1, 2)) if self.entropy[n]>0]
             for neighbour in neighbours:
                 x, y = neighbour
-                offset = (i - x, j - y)
-                # offset = (i - x, j - y)
 
-                # if offset not in self.offsets:
-                #     continue
-                if abs(i - x) == abs(j - y):
+                if not self.is_cardinal_neighour(i, j, x, y):
                     continue
+
+                offset = (i - x, j - y)
 
                 # State of the neighbour cell before propagation
                 pre = self.choices[x, y, :].copy()
