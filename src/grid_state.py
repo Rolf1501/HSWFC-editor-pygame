@@ -312,6 +312,17 @@ class GridState:
         """
         return coordinate[0] >= 0 and coordinate[1] >= 0 and coordinate[0] < self.grid_x and coordinate[1] < self.grid_y
 
+
+    @staticmethod
+    def is_cardinal_neighour(this_x, this_y, that_x, that_y):
+        # TODO: automate this for 3D.
+        diff_x = abs(this_x - that_x)
+        diff_y = abs(this_y - that_y)
+
+        # Cardinality is ensured if the neighbour is a direct neighbour (diff == 1)
+        # and if not both coordinates are the same, to exclude self and corners.
+        return (diff_x == 1) != (diff_y == 1)
+
     
     # BUG: Sometimes, entropy does not update properly, this is visible as hard edges appearing on the entropy display.
     #      Easy to reproduce when erasing collapsed tiles with the root tile
@@ -368,15 +379,6 @@ class GridState:
                 else:
                     self.queue.append(P(neighbour, current, depth+1))
 
-    @staticmethod
-    def is_cardinal_neighour(this_x, this_y, that_x, that_y):
-        # TODO: automate this for 3D.
-        diff_x = abs(this_x - that_x)
-        diff_y = abs(this_y - that_y)
-
-        # Cardinality is ensured if the neighbour is a direct neighbour (diff == 1)
-        # and if not both coordinates are the same, to exclude self and corners.
-        return (diff_x == 1) != (diff_y == 1)
     
     def propagate(self):
         """
