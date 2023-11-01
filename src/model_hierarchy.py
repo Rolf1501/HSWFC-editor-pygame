@@ -9,13 +9,16 @@ class Part:
     
     def absolute_north(self) -> Cardinals:
         # Assumes rotation expressed in degrees
-        return Cardinals(self.rotation / 90.0)
+        return Cardinals((self.rotation / 90.0) % len(Cardinals))
 
-def handle_adjacency(source: Part, attachment: Part, adjacency: Cardinals):
+def handle_adjacency(source: Part, attachment: Part, adjacency: Cardinals, relative_adjacency=True):
     """
-    Aligns parts such that part 2 meets part 1 at the indicated adjacency face.
-    """ 
-    adjacency = Cardinals(adjacency.value + source.absolute_north().value)
+    Aligns the attachments on the face of source indicated by the adjacency.
+    """
+
+    # The links are relative, so need to take the rotation into account.
+    if relative_adjacency:
+        adjacency = Cardinals((adjacency.value + source.absolute_north().value) % len(Cardinals))
 
     if adjacency == Cardinals.EAST:
         attachment.size.maxx = source.size.maxx + attachment.size.width()
@@ -26,8 +29,8 @@ def handle_adjacency(source: Part, attachment: Part, adjacency: Cardinals):
         attachment.size.maxx = source.size.minx
 
     elif adjacency == Cardinals.NORTH:
-        source.size.miny = attachment.size.miny - source.size.height()
-        source.size.maxy = attachment.size.miny
+        attachment.size.miny = source.size.miny - attachment.size.height()
+        attachment.size.maxy = source.size.miny
 
     elif adjacency == Cardinals.SOUTH:
         attachment.size.maxy = source.size.maxy + attachment.size.height()
@@ -37,12 +40,14 @@ def handle_adjacency(source: Part, attachment: Part, adjacency: Cardinals):
 
 def center(source: Part, attachment: Part, dimension: Dimensions) -> (BB, BB):
     """
-    Centers bb2 relative to bb1 for the given dimension.
+    Centers attachment relative to source.
     """
     bb1 = source.size
     bb2 = attachment.size
 
     bb1_center = bb1.center()
+
+    # In case the part has been rotated such that the relative axes do not align with the global x and y axes, switch the dimension.
     if source.absolute_north() == Cardinals.EAST or source.absolute_north() == Cardinals.WEST:
         dimension = Dimensions((dimension.value + 1) % len(Dimensions))
     if dimension == Dimensions.X:
@@ -54,8 +59,6 @@ def center(source: Part, attachment: Part, dimension: Dimensions) -> (BB, BB):
         bb2.miny = bb1_center.y - 0.5 * bb2_height
         bb2.maxy = bb2.miny + bb2_height
 
-    # Compensate for out of bounds (negative) values.
-    # t = bb2.to_positive_translation()
     return bb1, bb2
 
 def handle_properties(source: Part, attachment: Part, properties: list[Properties]):

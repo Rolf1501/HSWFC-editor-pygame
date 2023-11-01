@@ -9,7 +9,7 @@ import queue
 import model_hierarchy_tree as mht
 from boundingbox import BoundingBox as BB
 from model_hierarchy import Part, handle_adjacency, handle_properties
-
+from util_data import *
 from collections import namedtuple
 import math
 
@@ -55,16 +55,23 @@ drawing_queue = queue.Queue[DrawJob]()
 
 # orientations are implicit. All initially point towards North (0,1).
 bbs = {
-    0: BB(0,100,0,100),
-    1: BB(0,200,0,50),
-    2: BB(0,75,0,150)
+    0: BB(0,300,0,200), # Car frame
+    1: BB(0,250,0,50), # Front axle
+    2: BB(0,250,0,50), # Back axle
+    3: BB(0,75,0,25), # Wheel
+    4: BB(0,75,0,25), # Wheel   
+    5: BB(0,75,0,25), # Wheel
+    6: BB(0,75,0,25), # Wheel
 }
 
 links = [
-    # mht.MHLink(1, 0, mht.Cardinals.EAST, [mht.Properties(mht.Operations.CENTER, mht.Dimensions.Y)]),
-    mht.MHLink(0, 1, mht.Cardinals.WEST, [mht.Properties(mht.Operations.ORTH, mht.Dimensions.Y), mht.Properties(mht.Operations.CENTER, mht.Dimensions.Y)]),
-    
-    mht.MHLink(1, 2, mht.Cardinals.EAST, [mht.Properties(mht.Operations.CENTER, mht.Dimensions.Y)]),
+    mht.MHLink(0, 1, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH, Dimensions.Y), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(1, 4, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH, Dimensions.Y), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(1, 3, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH, Dimensions.Y), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(0, 2, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH, Dimensions.Y), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(2, 5, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH, Dimensions.Y), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(2, 6, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH, Dimensions.Y), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(3, 4, None, [mht.Properties(Operations.SYM, Dimensions.X)])
 ]
 
 parts: dict[int, Part] = {}
@@ -84,7 +91,11 @@ for l in links:
 
     for p in l.properties:
         if p.operation == mht.Operations.ORTH:
-            rotation = 90 # rotation in degrees
+            rotation += 90 # rotation in degrees
+        if p.operation == mht.Operations.SYM:
+            rotation += 180
+
+        
 
     # Propagate rotation to all attachment group parts to ensure uniformity.
     for elem in groups[attachment_group]:
@@ -117,12 +128,12 @@ def rotate(bb: BB, rotation, degrees=True):
     trans_rot_coord = rot_coord + Coord(bb.minx, bb.miny)
 
     rot_bb = BB(
-        min(bb.minx, trans_rot_coord.x), 
-        max(0, trans_rot_coord.x), 
-        min(bb.miny, trans_rot_coord.y), 
-        max(0, trans_rot_coord.y))
+        int(math.ceil(min(bb.minx, trans_rot_coord.x))),
+        int(math.ceil(max(0, trans_rot_coord.x))),
+        int(math.ceil(min(bb.miny, trans_rot_coord.y))),
+        int(math.ceil(max(0, trans_rot_coord.y))))
     
-    rot_bb.to_positive()
+    rot_bb += rot_bb.to_positive_translation()
 
     return Part(rot_bb, rotation)
 
@@ -132,15 +143,18 @@ for k in parts.keys():
 
 # Assemble the parts.
 for l in links:
-    p1, p2 = handle_adjacency(parts[l.source], parts[l.attachment], l.adjacency)
+    if l.adjacency is not None:
+        p1, p2 = handle_adjacency(parts[l.source], parts[l.attachment], l.adjacency)
+
     p1, p2 = handle_properties(parts[l.source], parts[l.attachment], l.properties)
     parts[l.source] = p1
     parts[l.attachment] = p2
 
-minx = 0
-miny = 0
+
+# Normalise all parts' bounding boxes to fit the canvas.
+minx = 999999
+miny = 999999
 for k in parts.keys():
-    print(parts[k].size)
     if parts[k].size.minx < minx:
         minx = parts[k].size.minx
     if parts[k].size.miny < miny:
@@ -149,7 +163,19 @@ for k in parts.keys():
 translate = BB(-minx, -minx, -miny, -miny)
 for k in parts.keys():
     parts[k].size += translate
-    print(parts[k].size)
+
+def cardinal_to_normal_coord(card: Cardinals) -> Coord:
+    if card == Cardinals.NORTH:
+        return Coord(0,-1)
+    elif card == Cardinals.EAST:
+        return Coord(1,0)
+    elif card == Cardinals.SOUTH:
+        return Coord(0,1)
+    elif card == Cardinals.WEST:
+        return Coord(-1,0)
+    else:
+        raise NotImplementedError(f"Cardinal must be valid. Got: {card}")
+
 ##########################
 ###   MAIN GAME LOOP   ###
 ##########################
@@ -163,6 +189,16 @@ while running:
                 range = 255.0 / len(parts)
                 for p in parts.keys():
                     drawing_queue.put(DrawJob(BB_to_rect(parts[p].size), Colour(0, 200, range * p)))
+            if event.key == pygame.K_n:
+                for p in parts.keys():
+                    bb = parts[p].size
+                    rotation_vector = cardinal_to_normal_coord(parts[p].absolute_north())
+                    rotation_vector.scale(28)
+                    rotation_vector += Coord(2,2)
+                    center = bb.center()
+                    rotation_indicator = BB(center.x, center.x + rotation_vector.x, center.y, center.y + rotation_vector.y)
+                    rotation_indicator_rect = BB_to_rect(rotation_indicator)
+                    drawing_queue.put(DrawJob(rotation_indicator_rect, Colour(0, 0, 0)))
             if event.key == pygame.K_c:
                 clear_drawing()
     

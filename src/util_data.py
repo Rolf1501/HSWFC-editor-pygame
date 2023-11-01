@@ -5,6 +5,7 @@ class Cardinals(Enum):
     SOUTH = 2
     WEST = 3
 
+
 class Operations(Enum):
     ORTH = 0
     SYM = 1

@@ -21,6 +21,10 @@ class Coord:
     def min(this, that):
         return Coord(min(this.x, that.x), min(this.y, that.y), min(this.z, that.z))
 
-    
+    def scale(self, scalar):
+        self.x *= scalar
+        self.y *= scalar
+        self.z *= scalar
+
     def toTuple(self):
         return (self.x, self.y)
