@@ -43,9 +43,3 @@ class BoundingBox:
 
     def to_positive(self):
         self += self.to_positive_translation()
-
-    def scale(self, scalar):
-        self.minx *= scalar
-        self.maxx *= scalar
-        self.miny *= scalar
-        self.maxy *= scalar

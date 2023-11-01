@@ -13,6 +13,8 @@ from util_data import *
 from collections import namedtuple
 import math
 
+import networkx as nx
+
 pygame.init()
 
 select_mode = False
@@ -53,7 +55,7 @@ drawing_queue = queue.Queue[DrawJob]()
 
 # TOY EXAMPLE
 
-# orientations are implicit. All initially point towards North (0,1).
+# orientations are implicit. All initially point towards North.
 bbs = {
     0: BB(0,300,0,200), # Car frame
     1: BB(0,250,0,50), # Front axle
@@ -65,13 +67,13 @@ bbs = {
 }
 
 links = [
-    mht.MHLink(0, 1, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH, Dimensions.Y), mht.Properties(Operations.CENTER, Dimensions.Y)]),
-    mht.MHLink(1, 4, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH, Dimensions.Y), mht.Properties(Operations.CENTER, Dimensions.Y)]),
-    mht.MHLink(1, 3, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH, Dimensions.Y), mht.Properties(Operations.CENTER, Dimensions.Y)]),
-    mht.MHLink(0, 2, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH, Dimensions.Y), mht.Properties(Operations.CENTER, Dimensions.Y)]),
-    mht.MHLink(2, 5, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH, Dimensions.Y), mht.Properties(Operations.CENTER, Dimensions.Y)]),
-    mht.MHLink(2, 6, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH, Dimensions.Y), mht.Properties(Operations.CENTER, Dimensions.Y)]),
-    mht.MHLink(3, 4, None, [mht.Properties(Operations.SYM, Dimensions.X)])
+    mht.MHLink(0, 1, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(1, 4, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(1, 3, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(0, 2, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(2, 5, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(2, 6, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    # mht.MHLink(3, 4, None, [mht.Properties(Operations.SYM, Dimensions.X)])
 ]
 
 parts: dict[int, Part] = {}
@@ -82,31 +84,39 @@ for key in bbs.keys():
     linkages[key] = key
     groups[key] = {key}
 
+model = nx.Graph()
+
+
+model.add_nodes_from(parts.keys())
+
+for l in links:
+    if l.adjacency is not None:
+        model.add_edge(l.source, l.attachment)
+
+assert nx.is_tree(model)
+
+
+attachment_memoization: dict[int, list[int]] = {}
 
 # Determine final rotations of all parts.
 for l in links:
-    rotation = 0
-    attachment_group = linkages[l.attachment]
-    source_group = linkages[l.source]
-
     for p in l.properties:
+        # nx.cut
         if p.operation == mht.Operations.ORTH:
-            rotation += 90 # rotation in degrees
+            # Only rotate if the two parts are not yet orthogonal
+            if abs(parts[l.source].rotation - parts[l.attachment].rotation) != 90:
+                rotation = 90 # rotation in degrees
+                temp_model = model.copy()
+                temp_model.remove_edge(l.source, l.attachment)
+                subtree: nx.Graph = nx.dfs_tree(temp_model, l.attachment)
+                # Rotation needs to be propagated to all parts attached to the attachment.
+                for n in subtree.nodes:
+                    parts[n].rotation += rotation
+
         if p.operation == mht.Operations.SYM:
-            rotation += 180
+            rotation = 180
 
         
-
-    # Propagate rotation to all attachment group parts to ensure uniformity.
-    for elem in groups[attachment_group]:
-        parts[elem].rotation += rotation + parts[l.source].rotation
-
-    if linkages[l.source] != linkages[l.attachment]:
-        # Merge groups. Remove merged attachment group.
-        groups[source_group].update(groups.pop(attachment_group))
-
-        # Update group reference.
-        linkages[l.attachment] = linkages[l.source]
 
 def rotate(bb: BB, rotation, degrees=True):
     """
@@ -164,6 +174,8 @@ translate = BB(-minx, -minx, -miny, -miny)
 for k in parts.keys():
     parts[k].size += translate
 
+
+# Convert cardinals to canvas specific coordinates.
 def cardinal_to_normal_coord(card: Cardinals) -> Coord:
     if card == Cardinals.NORTH:
         return Coord(0,-1)
