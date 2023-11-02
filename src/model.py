@@ -6,6 +6,7 @@ from model_tree import ModelTree
 import math
 from coord import Coord
 from boundingbox import BoundingBox as BB
+import networkx as nx
 
 class Part:
     def __init__(self, size: BB, rotation: int=0, translation: Coord=Coord(0,0)) -> None:
@@ -19,7 +20,7 @@ class Part:
     
 
 class Model:  
-    def __init__(self, parts: dict[int, Part], links: list[int], model_tree: ModelTree=None):
+    def __init__(self, parts: dict[int, Part], links: list[MHLink], model_tree: ModelTree=None):
         self.parts = parts
         self.links = links
         if model_tree is None:
@@ -31,8 +32,15 @@ class Model:
 
     def _precalc_tree_cut_sets(self):
         for l in self.links:
-            self.model_tree_cuts_memoi[(l.source, l.attachment)] = self.model_tree.get_attachment_subtree(l.source, l.attachment)
-    
+            if (l.source, l.attachment) in self.model_tree.edges:
+                self.model_tree_cuts_memoi[(l.source, l.attachment)] = self.model_tree.get_attachment_subtree(l.source, l.attachment)
+            else:
+                # If the two nodes are not adjacent, the attachment group can be found by performing a cut between the attachment and penultimate node in the shortest path from source to attachment.
+                shortest_path = nx.shortest_path(self.model_tree, l.source, l.attachment)
+                subtree = self.model_tree.get_attachment_subtree(shortest_path[-2], shortest_path[-1])
+                self.model_tree_cuts_memoi[(l.source, l.attachment)] = subtree
+
+
     def solve(self):
         self._determine_final_rotations()
         self._rotate_all()
@@ -93,20 +101,27 @@ class Model:
 
     def _determine_final_rotations(self):
         # Determine final rotations of all parts.
+        rotation_diff = 0
         for l in self.links:
-            for p in l.properties:
-                # nx.cut
-                if p.operation == Operations.ORTH:
-                    # Only rotate if the two parts are not yet orthogonal
-                    if abs(self.parts[l.source].rotation - self.parts[l.attachment].rotation) != 90:
-                        rotation = 90 # rotation in degrees
-                        
-                        # Rotation needs to be propagated to all parts attached to the attachment.
-                        for n in self.model_tree_cuts_memoi[(l.source, l.attachment)]:
-                            self.parts[n].rotation += rotation
+            subtree_nodes = self.model_tree_cuts_memoi[(l.source, l.attachment)]
+            source = self.parts[l.source]
+            attachment = self.parts[l.attachment]
 
-                if p.operation == Operations.SYM:
-                    rotation = 180
+            rotation_diff = abs(source.rotation - attachment.rotation)
+            for p in l.properties:
+                rotation = 0
+                if p.operation == Operations.ORTH:
+                    if rotation_diff != 90:
+                        rotation = 90 # rotation in degrees
+
+                elif p.operation == Operations.SYM:
+                    if rotation_diff != 180:
+                        rotation = 180
+
+                if rotation != 0:
+                    # Rotation needs to be propagated to all parts attached to the attachment.
+                    for n in subtree_nodes:
+                        self.parts[n].rotation += rotation
     
     def _rotate_all(self):
         # self._determine_final_rotations()

@@ -37,9 +37,10 @@ class MHEdge:
 class MHLink:
     source: MHNodeID = field()
     attachment: MHNodeID = field()
-    adjacency: Cardinals = field() # Specifies which face of this should meet which face of that.
+    adjacency: Cardinals # Specifies which face of this should meet which face of that.
     # rotation: Coord = field(default_factory=Coord(0,0,0))
     properties: list[Properties] = field(default_factory=[])
+    relative_adjacency: bool = field(default=True)
 
 @dataclass
 class MHTree(nx.Graph):
