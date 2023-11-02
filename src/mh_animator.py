@@ -8,12 +8,11 @@ from coord import Coord
 import queue
 import model_hierarchy_tree as mht
 from boundingbox import BoundingBox as BB
-from model_hierarchy import Part, handle_adjacency, handle_properties
+from model import Part
 from util_data import *
 from collections import namedtuple
-import math
-
-import networkx as nx
+from model_tree import ModelTree
+from model import Model
 
 pygame.init()
 
@@ -66,99 +65,67 @@ bbs = {
     6: BB(0,75,0,25), # Wheel
 }
 
+# Order independent
 links = [
     mht.MHLink(0, 1, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
     mht.MHLink(1, 4, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
     mht.MHLink(1, 3, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
-    mht.MHLink(0, 2, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
     mht.MHLink(2, 5, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
     mht.MHLink(2, 6, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(0, 2, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
     # mht.MHLink(3, 4, None, [mht.Properties(Operations.SYM, Dimensions.X)])
 ]
 
 parts: dict[int, Part] = {}
-linkages = {} # pointers to corresponding groups.
-groups: dict[int, set] = {}
 for key in bbs.keys():
     parts[key] = Part(bbs[key], 0)
-    linkages[key] = key
-    groups[key] = {key}
 
-model = nx.Graph()
+# Construct model hierarchy based on links.
+model_tree = ModelTree(parts.keys(), [(l.source, l.attachment) for l in links if l.adjacency is not None])
+model = Model(parts=parts, links=links)
 
+model.solve()
+# def rotate(bb: BB, rotation, degrees=True):
+#     """
+#     Currently done in 2D. Needs extension for 3D later
+#     """
+#     size_vector = Coord(bb.width(), bb.height())
+#     # rotation: [[cos a, -sin a], [sin a, cos a]]  [x, y]
+#     # rotated vector: (x * cos a - y * sin a), (x * sin a + y * cos a)
+#     if degrees:
+#         tot = 360.0
+#     else:
+#         raise NotImplementedError("Only supports degrees for now.")
 
-model.add_nodes_from(parts.keys())
+#     rotation_norm = rotation % tot
+#     rad = math.radians(rotation_norm)
+#     cosa = math.cos(rad)
+#     sina = math.sin(rad)
+#     rot_coord = Coord(size_vector.x * cosa - size_vector.y * sina, size_vector.x * sina + size_vector.y * cosa)
+#     trans_rot_coord = rot_coord + Coord(bb.minx, bb.miny)
 
-for l in links:
-    if l.adjacency is not None:
-        model.add_edge(l.source, l.attachment)
-
-assert nx.is_tree(model)
-
-
-attachment_memoization: dict[int, list[int]] = {}
-
-# Determine final rotations of all parts.
-for l in links:
-    for p in l.properties:
-        # nx.cut
-        if p.operation == mht.Operations.ORTH:
-            # Only rotate if the two parts are not yet orthogonal
-            if abs(parts[l.source].rotation - parts[l.attachment].rotation) != 90:
-                rotation = 90 # rotation in degrees
-                temp_model = model.copy()
-                temp_model.remove_edge(l.source, l.attachment)
-                subtree: nx.Graph = nx.dfs_tree(temp_model, l.attachment)
-                # Rotation needs to be propagated to all parts attached to the attachment.
-                for n in subtree.nodes:
-                    parts[n].rotation += rotation
-
-        if p.operation == mht.Operations.SYM:
-            rotation = 180
-
-        
-
-def rotate(bb: BB, rotation, degrees=True):
-    """
-    Currently done in 2D. Needs extension for 3D later
-    """
-    size_vector = Coord(bb.width(), bb.height())
-    # rotation: [[cos a, -sin a], [sin a, cos a]]  [x, y]
-    # rotated vector: (x * cos a - y * sin a), (x * sin a + y * cos a)
-    if degrees:
-        tot = 360.0
-    else:
-        raise NotImplementedError("Only supports degrees for now.")
-
-    rotation_norm = rotation % tot
-    rad = math.radians(rotation_norm)
-    cosa = math.cos(rad)
-    sina = math.sin(rad)
-    rot_coord = Coord(size_vector.x * cosa - size_vector.y * sina, size_vector.x * sina + size_vector.y * cosa)
-    trans_rot_coord = rot_coord + Coord(bb.minx, bb.miny)
-
-    rot_bb = BB(
-        int(math.ceil(min(bb.minx, trans_rot_coord.x))),
-        int(math.ceil(max(0, trans_rot_coord.x))),
-        int(math.ceil(min(bb.miny, trans_rot_coord.y))),
-        int(math.ceil(max(0, trans_rot_coord.y))))
+#     rot_bb = BB(
+#         int(math.ceil(min(bb.minx, trans_rot_coord.x))),
+#         int(math.ceil(max(0, trans_rot_coord.x))),
+#         int(math.ceil(min(bb.miny, trans_rot_coord.y))),
+#         int(math.ceil(max(0, trans_rot_coord.y))))
     
-    rot_bb += rot_bb.to_positive_translation()
+#     rot_bb += rot_bb.to_positive_translation()
 
-    return Part(rot_bb, rotation)
+#     return Part(rot_bb, rotation)
 
 # Rotate all parts to their final rotated state.
-for k in parts.keys():
-    parts[k] = rotate(parts[k].size, parts[k].rotation)
+# for k in parts.keys():
+#     parts[k] = rotate(parts[k].size, parts[k].rotation)
 
 # Assemble the parts.
-for l in links:
-    if l.adjacency is not None:
-        p1, p2 = handle_adjacency(parts[l.source], parts[l.attachment], l.adjacency)
+# for l in links:
+#     if l.adjacency is not None:
+#         p1, p2 = handle_adjacency(parts[l.source], parts[l.attachment], l.adjacency)
 
-    p1, p2 = handle_properties(parts[l.source], parts[l.attachment], l.properties)
-    parts[l.source] = p1
-    parts[l.attachment] = p2
+#     p1, p2 = handle_properties(parts[l.source], parts[l.attachment], l.properties)
+#     parts[l.source] = p1
+#     parts[l.attachment] = p2
 
 
 # Normalise all parts' bounding boxes to fit the canvas.

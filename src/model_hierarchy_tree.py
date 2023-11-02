@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from boundingbox import BoundingBox as BB
 from coord import Coord
 from util_data import Cardinals, Dimensions, Operations
-
+import networkx as nx
 
 @dataclass
 class Properties:
@@ -41,13 +41,13 @@ class MHLink:
     # rotation: Coord = field(default_factory=Coord(0,0,0))
     properties: list[Properties] = field(default_factory=[])
 
-
-@dataclass()
-class MHTree:
+@dataclass
+class MHTree(nx.Graph):
     nodes: dict[MHNodeID, MHNode] = field(default_factory={})
     edges: list[MHEdge] = field(default_factory=[])
     links: list[MHLink] = field(default_factory=[])
-
+    # def __init__(self):
+    #     pass
     def add_node(self, node: MHNode):
         self.nodes[node.node_id] = node
 
