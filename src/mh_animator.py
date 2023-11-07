@@ -12,6 +12,9 @@ from model import Part
 from util_data import *
 from collections import namedtuple
 from model import Model
+from communicator import Communicator
+
+comm = Communicator()
 
 pygame.init()
 
@@ -54,16 +57,17 @@ drawing_queue = queue.Queue[DrawJob]()
 # TOY EXAMPLE
 
 # orientations are implicit. All initially point towards North.
-bbs = {
-    0: BB(0,500,0,200), # Car frame
-    1: BB(0,250,0,50), # Front axle
-    2: BB(0,300,0,50), # Back axle
-    3: BB(0,75,0,25), # Wheel
-    4: BB(0,75,0,25), # Wheel   
-    5: BB(0,85,0,30), # Wheel
-    6: BB(0,85,0,30), # Wheel
-    # 7: BB(0,25,0,25), # Nob
+parts: dict[int, Part] = {
+    0: Part(BB(0,500,0,200), name="Car frame"),
+    1: Part(BB(0,250,0,50), name="Front axle"),
+    2: Part(BB(0,300,0,50), name="Rear axle"),
+    3: Part(BB(0,75,0,25), name="Front wheel"),
+    4: Part(BB(0,75,0,25), name="Front wheel"),
+    5: Part(BB(0,85,0,25), name="Rear wheel"),
+    6: Part(BB(0,85,0,25), name="Rear wheel"),
 }
+
+nodes = [(k, parts[k].name) for k in parts.keys()]
 
 # Order independent
 links = [
@@ -75,31 +79,28 @@ links = [
     mht.MHLink(0, 2, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
     mht.MHLink(3, 4, None, [mht.Properties(Operations.SYM, Dimensions.X)]),
     mht.MHLink(5, 6, None, [mht.Properties(Operations.SYM, Dimensions.X)]),
-    # mht.MHLink(3, 7, mht.Cardinals.NORTH, [mht.Properties(Operations.CENTER, Dimensions.X)]),
 ]
 
-parts: dict[int, Part] = {}
-for key in bbs.keys():
-    parts[key] = Part(bbs[key], 0)
-
-# Construct model hierarchy based on links.
+# Construct model tree based on links.
 model = Model(parts, links)
 
 model.solve()
 
-# Normalise all parts' bounding boxes to fit the canvas.
-minx = 999999
-miny = 999999
-for k in parts.keys():
-    if parts[k].size.minx < minx:
-        minx = parts[k].size.minx
-    if parts[k].size.miny < miny:
-        miny = parts[k].size.miny
+def fit_canvas():
+    # Normalise all parts' bounding boxes to fit the canvas.
+    minx = 999999
+    miny = 999999
+    for k in parts.keys():
+        if parts[k].size.minx < minx:
+            minx = parts[k].size.minx
+        if parts[k].size.miny < miny:
+            miny = parts[k].size.miny
 
-translate = BB(-minx, -minx, -miny, -miny)
-for k in parts.keys():
-    parts[k].size += translate
+    translate = BB(-minx, -minx, -miny, -miny)
+    for k in parts.keys():
+        parts[k].size += translate
 
+fit_canvas()
 
 # Convert cardinals to canvas specific coordinates.
 def cardinal_to_normal_coord(card: Cardinals) -> Coord:

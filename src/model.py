@@ -6,12 +6,15 @@ import math
 from coord import Coord
 from boundingbox import BoundingBox as BB
 import networkx as nx
+from communicator import Communicator
+comm = Communicator()
 
 class Part:
-    def __init__(self, size: BB, rotation: int=0, translation: Coord=Coord(0,0)) -> None:
+    def __init__(self, size: BB, rotation: int=0, translation: Coord=Coord(0,0), name="") -> None:
         self.size = size
         self.rotation = rotation
         self.translation = translation
+        self.name = name
     
     def absolute_north(self) -> Cardinals:
         # Assumes rotation expressed in degrees
@@ -31,6 +34,7 @@ class Model:
         self._precalc_tree_cut_sets()
 
     def _precalc_tree_cut_sets(self):
+        comm.communicate("Deriving subtrees...")
         for l in self.links:
             if (l.source, l.attachment) in self.model_tree.edges:
                 self.model_tree_cuts_memoi[(l.source, l.attachment)] = self.model_tree.get_attachment_subtree(l.source, l.attachment)
@@ -40,7 +44,7 @@ class Model:
                 shortest_path = nx.shortest_path(self.model_tree, l.source, l.attachment)
                 subtree = self.model_tree.get_attachment_subtree(shortest_path[-2], shortest_path[-1])
                 self.model_tree_cuts_memoi[(l.source, l.attachment)] = subtree
-    
+        comm.communicate("Subtree derivations complete.")
     
     def solve(self):
         self._determine_final_rotations()
