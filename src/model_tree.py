@@ -7,7 +7,7 @@ class ModelTree(nx.Graph):
         super().__init__(incoming_graph_data, **attr)
         self.add_nodes_from(nodes)
         self.add_edges_from(edges)
-        # assert nx.is_tree(self)
+
     
     def get_attachment_subtree(self, source: int, attachment: int) -> list[int]:
         # Only one edge needs to be removed to create two disjoint sets, as a tree is acyclic.

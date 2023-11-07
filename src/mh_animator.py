@@ -55,14 +55,14 @@ drawing_queue = queue.Queue[DrawJob]()
 
 # orientations are implicit. All initially point towards North.
 bbs = {
-    0: BB(0,300,0,200), # Car frame
+    0: BB(0,500,0,200), # Car frame
     1: BB(0,250,0,50), # Front axle
-    2: BB(0,250,0,50), # Back axle
+    2: BB(0,300,0,50), # Back axle
     3: BB(0,75,0,25), # Wheel
     4: BB(0,75,0,25), # Wheel   
-    5: BB(0,75,0,25), # Wheel
-    6: BB(0,75,0,25), # Wheel
-    7: BB(0,25,0,25), # Nob
+    5: BB(0,85,0,30), # Wheel
+    6: BB(0,85,0,30), # Wheel
+    # 7: BB(0,25,0,25), # Nob
 }
 
 # Order independent
@@ -75,7 +75,7 @@ links = [
     mht.MHLink(0, 2, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
     mht.MHLink(3, 4, None, [mht.Properties(Operations.SYM, Dimensions.X)]),
     mht.MHLink(5, 6, None, [mht.Properties(Operations.SYM, Dimensions.X)]),
-    mht.MHLink(3, 7, mht.Cardinals.NORTH, [mht.Properties(Operations.CENTER, Dimensions.X)]),
+    # mht.MHLink(3, 7, mht.Cardinals.NORTH, [mht.Properties(Operations.CENTER, Dimensions.X)]),
 ]
 
 parts: dict[int, Part] = {}
