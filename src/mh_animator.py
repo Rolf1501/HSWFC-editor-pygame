@@ -5,7 +5,6 @@
 # INIT pygame
 import pygame
 from coord import Coord
-import queue
 import model_hierarchy_tree as mht
 from boundingbox import BoundingBox as BB
 from model import Part
@@ -13,6 +12,9 @@ from util_data import *
 from collections import namedtuple
 from model import Model
 from communicator import Communicator
+import networkx as nx
+from model_tree import ModelTree
+from queue import Queue
 
 comm = Communicator()
 
@@ -51,40 +53,53 @@ def BB_to_rect(bb: BB):
 def clear_drawing():
     draw_surface.fill("white")
 
-drawing_queue = queue.Queue[DrawJob]()
+drawing_queue = Queue[DrawJob]()
 
 
 # TOY EXAMPLE
 
-# orientations are implicit. All initially point towards North.
+# Collection of all parts. 
+# Orientations are implicit. All initially point towards North.
 parts: dict[int, Part] = {
     0: Part(BB(0,500,0,200), name="Car frame"),
-    1: Part(BB(0,250,0,50), name="Front axle"),
-    2: Part(BB(0,300,0,50), name="Rear axle"),
+
+    1: Part(BB(0,250,0,75), name="Front frame"),
+    2: Part(BB(0,250,0,50), name="Front axle"),
     3: Part(BB(0,75,0,25), name="Front wheel"),
     4: Part(BB(0,75,0,25), name="Front wheel"),
-    5: Part(BB(0,85,0,25), name="Rear wheel"),
-    6: Part(BB(0,85,0,25), name="Rear wheel"),
+
+    5: Part(BB(0,300,0,85), name="Rear frame"),
+    6: Part(BB(0,300,0,50), name="Rear axle"),
+    7: Part(BB(0,85,0,25), name="Rear wheel"),
+    8: Part(BB(0,85,0,25), name="Rear wheel"),
 }
 
-nodes = [(k, parts[k].name) for k in parts.keys()]
-
-# Order independent
-links = [
-    mht.MHLink(0, 1, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
-    mht.MHLink(1, 4, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
-    mht.MHLink(1, 3, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
-    mht.MHLink(2, 5, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
-    mht.MHLink(2, 6, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
-    mht.MHLink(0, 2, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
-    mht.MHLink(3, 4, None, [mht.Properties(Operations.SYM, Dimensions.X)]),
-    mht.MHLink(5, 6, None, [mht.Properties(Operations.SYM, Dimensions.X)]),
+# Edges determine the hierarchy such that for each edge (u, v), u consists of v.
+edges = [
+    mht.MHEdge(-1, 0),
+    mht.MHEdge(-1, 1),
+    mht.MHEdge(-1, 5),
+    mht.MHEdge(1, 2),
+    mht.MHEdge(1, 3),
+    mht.MHEdge(1, 4),
+    mht.MHEdge(5, 6),
+    mht.MHEdge(5, 7),
+    mht.MHEdge(5, 8)
 ]
 
-# Construct model tree based on links.
-model = Model(parts, links)
+# Links specifying the relations between parts. Order independent.
+links = [
+    mht.MHLink(0, 1, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(0, 5, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
 
-model.solve()
+    mht.MHLink(2, 3, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(2, 4, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+
+    mht.MHLink(6, 7, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(6, 8, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+]
+
+full_model_tree = Model.to_model_tree(parts, links)
 
 def fit_canvas():
     # Normalise all parts' bounding boxes to fit the canvas.
@@ -115,11 +130,57 @@ def cardinal_to_normal_coord(card: Cardinals) -> Coord:
     else:
         raise NotImplementedError(f"Cardinal must be valid. Got: {card}")
 
+
+
+# Construct model tree based on links.
+# model = Model(parts, links)
+# model.solve()
+
+
+# The nodes ids in the hierarchy correspond to the keys of the parts, except for the root node.
+nodes = [mht.MHNode(k, parts[k].name) for k in parts.keys()]
+root = mht.MHNode(-1, "Root")
+nodes.append(root)
+model_hierarchy_tree = mht.MHTree(nodes, edges)
+
+collapse_stack = []
+collapse_stack.append(-1)
+
+
 ##########################
 ###   MAIN GAME LOOP   ###
 ##########################
 
+start_next = True
 while running:
+    if start_next:
+        if len(collapse_stack) > 0:
+            current_node = collapse_stack.pop()
+            comm.communicate(f"Currently processing {(current_node, parts[current_node].name) if current_node in parts.keys() else -1}...")
+
+            children = model_hierarchy_tree.successors(current_node)
+            
+            comm.communicate(f"Determining sibling processing order.")
+            model_subtree = ModelTree(incoming_graph_data=full_model_tree.to_directed().subgraph(children).copy())
+            sibling_order = model_subtree.get_sibling_order()
+            
+            # Stack is LIFO and the nodes in the order should be processed in that order. So, append the nodes in reverse.
+            sibling_order.reverse()
+            for sib in sibling_order:
+                collapse_stack.append(sib)
+            
+            if len(sibling_order) > 0:
+                comm.communicate(f"Found sibling order: {list(map(lambda sib: (sib, parts[sib].name), sibling_order))}")
+            else:
+                comm.communicate(f"No more siblings found for {(current_node, parts[current_node].name)}")
+
+            comm.communicate(f"Stack {collapse_stack}")
+            start_next = True
+        else:
+            comm.communicate("Collapse queue is empty. No more parts to process.")
+            start_next = False
+
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False

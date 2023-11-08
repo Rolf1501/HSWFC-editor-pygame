@@ -6,6 +6,7 @@ import math
 from coord import Coord
 from boundingbox import BoundingBox as BB
 import networkx as nx
+from queue import Queue
 from communicator import Communicator
 comm = Communicator()
 
@@ -28,24 +29,32 @@ class Model:
         if model_tree is not None:
             self.model_tree = model_tree
         else:
-            self.model_tree = ModelTree(self.parts.keys(), [(l.source, l.attachment) for l in self.links if l.adjacency is not None])
+            self.model_tree = self.to_model_tree(parts, links)
+        
         assert nx.is_tree(self.model_tree)
-        self.model_tree_cuts_memoi: dict[(int,int), list[int]] = {}
+        
+        self.model_subtrees_memoi: dict[(int,int), list[int]] = {}
         self._precalc_tree_cut_sets()
 
+
+    @staticmethod
+    def to_model_tree(parts: dict[int, Part], links: list[MHLink], filter_non_adjacent=True) -> ModelTree:
+        return ModelTree(parts.keys(), [(l.source, l.attachment) for l in links if filter_non_adjacent and l.adjacency is not None])
+        
     def _precalc_tree_cut_sets(self):
         comm.communicate("Deriving subtrees...")
         for l in self.links:
             if (l.source, l.attachment) in self.model_tree.edges:
-                self.model_tree_cuts_memoi[(l.source, l.attachment)] = self.model_tree.get_attachment_subtree(l.source, l.attachment)
+                self.model_subtrees_memoi[(l.source, l.attachment)] = self.model_tree.get_attachment_subtree(l.source, l.attachment)
             else:
                 # If the two nodes are not adjacent, the attachment group can be found by performing 
                 # a cut between the attachment and penultimate node in the shortest path from source to attachment.
                 shortest_path = nx.shortest_path(self.model_tree, l.source, l.attachment)
                 subtree = self.model_tree.get_attachment_subtree(shortest_path[-2], shortest_path[-1])
-                self.model_tree_cuts_memoi[(l.source, l.attachment)] = subtree
+                self.model_subtrees_memoi[(l.source, l.attachment)] = subtree
         comm.communicate("Subtree derivations complete.")
-    
+
+
     def solve(self):
         self._determine_final_rotations()
         self._rotate_all()
@@ -71,7 +80,7 @@ class Model:
         for l in self.links:
             if l.adjacency is not None:
                 t = self._adjacency_translation(l.source, l.attachment, l.adjacency)
-                for n in self.model_tree_cuts_memoi[(l.source, l.attachment)]:
+                for n in self.model_subtrees_memoi[(l.source, l.attachment)]:
                     self.parts[n].translation += t
     
 
@@ -81,7 +90,7 @@ class Model:
                 for p in l.properties:
                     if p.operation == Operations.CENTER:
                         t = self._center_translation(l.source, l.attachment, p.dimension)
-                        for n in self.model_tree_cuts_memoi[(l.source, l.attachment)]:
+                        for n in self.model_subtrees_memoi[(l.source, l.attachment)]:
                             self.parts[n].translation += t
 
 
@@ -113,7 +122,7 @@ class Model:
         # Determine final rotations of all parts.
         rotation_diff = 0
         for l in self.links:
-            subtree_nodes = self.model_tree_cuts_memoi[(l.source, l.attachment)]
+            subtree_nodes = self.model_subtrees_memoi[(l.source, l.attachment)]
             source = self.parts[l.source]
             attachment = self.parts[l.attachment]
 
@@ -130,6 +139,7 @@ class Model:
 
                 if rotation != 0:
                     # Rotation needs to be propagated to all parts attached to the attachment.
+                    comm.communicate(f"Propagating rotation to attachments subtree of part {l.attachment}")
                     for n in subtree_nodes:
                         self.parts[n].rotation += rotation
 

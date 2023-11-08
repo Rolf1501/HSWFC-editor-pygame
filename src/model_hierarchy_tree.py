@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from util_data import Cardinals, Dimensions, Operations
 import networkx as nx
-
+from collections import namedtuple
 @dataclass
 class Properties:
     operation: Operations = field()
@@ -14,10 +14,11 @@ class Adjacency:
 
 MHNodeID = int
 
-@dataclass()
-class MHNode:
-    name: str
-    node_id: MHNodeID
+MHNode = namedtuple("MHNode", ["node_id","name"])
+# @dataclass()
+# class MHNode:
+#     name: str
+#     node_id: MHNodeID
     # children: set[int] = field(default_factory={}) # direct children
     # parent: MHNodeID = field(default=-1) # direct parent
 
