@@ -12,6 +12,8 @@ class Coord:
         return Coord(self.x - other.x, self.y - other.y, self.z - other.z)
 
 
+    def __repr__(self) -> str:
+        return f"<Coord {self.x}, {self.y}, {self.z}>"
     @staticmethod
     def abs_diff(this, that):
         return Coord(abs(this.x - that.x), abs(this.y - that.y), abs(this.z - that.z))

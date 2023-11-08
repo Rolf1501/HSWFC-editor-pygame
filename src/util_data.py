@@ -16,3 +16,6 @@ class Dimensions(Enum):
     X = 0
     Y = 1
     # Z = 2
+
+MAX = 9999999
+MIN = -MAX

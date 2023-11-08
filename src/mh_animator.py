@@ -12,9 +12,9 @@ from util_data import *
 from collections import namedtuple
 from model import Model
 from communicator import Communicator
-import networkx as nx
 from model_tree import ModelTree
 from queue import Queue
+from copy import deepcopy
 
 comm = Communicator()
 
@@ -61,19 +61,20 @@ drawing_queue = Queue[DrawJob]()
 # Collection of all parts. 
 # Orientations are implicit. All initially point towards North.
 parts: dict[int, Part] = {
+    -1: Part(BB(0,0,0,0), name="Root"),
     0: Part(BB(0,500,0,200), name="Car frame"),
 
-    1: Part(BB(0,250,0,75), name="Front frame"),
+    1: Part(BB(0,300,0,75), name="Front frame"),
     2: Part(BB(0,250,0,50), name="Front axle"),
     3: Part(BB(0,75,0,25), name="Front wheel"),
     4: Part(BB(0,75,0,25), name="Front wheel"),
 
-    5: Part(BB(0,300,0,85), name="Rear frame"),
+    5: Part(BB(0,350,0,85), name="Rear frame"),
     6: Part(BB(0,300,0,50), name="Rear axle"),
     7: Part(BB(0,85,0,25), name="Rear wheel"),
     8: Part(BB(0,85,0,25), name="Rear wheel"),
 }
-
+original_parts = deepcopy(parts)
 # Edges determine the hierarchy such that for each edge (u, v), u consists of v.
 edges = [
     mht.MHEdge(-1, 0),
@@ -88,6 +89,7 @@ edges = [
 ]
 
 # Links specifying the relations between parts. Order independent.
+# Each link follows: (source, attachment, side of source the attachment should face, [props])
 links = [
     mht.MHLink(0, 1, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
     mht.MHLink(0, 5, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
@@ -99,23 +101,27 @@ links = [
     mht.MHLink(6, 8, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
 ]
 
-full_model_tree = Model.to_model_tree(parts, links)
+full_model_tree = ModelTree.from_parts_and_links(parts, links)
 
-def fit_canvas():
+
+def fit_canvas(parts: dict[int, Part]):
     # Normalise all parts' bounding boxes to fit the canvas.
-    minx = 999999
-    miny = 999999
-    for k in parts.keys():
-        if parts[k].size.minx < minx:
-            minx = parts[k].size.minx
-        if parts[k].size.miny < miny:
-            miny = parts[k].size.miny
+    fit_parts = deepcopy(parts)
+    minx = MAX
+    miny = MAX
+    for k in fit_parts:
+        if fit_parts[k].size.minx < minx:
+            minx = fit_parts[k].size.minx
+        if fit_parts[k].size.miny < miny:
+            miny = fit_parts[k].size.miny
 
-    translate = BB(-minx, -minx, -miny, -miny)
-    for k in parts.keys():
-        parts[k].size += translate
-
-fit_canvas()
+    # translate = BB(-minx, -minx, -miny, -miny)
+    translation = Coord(-minx, -miny)
+    for k in fit_parts:
+        # fit_parts[k].size += translate
+        fit_parts[k].size.translate(translation)
+    
+    return fit_parts
 
 # Convert cardinals to canvas specific coordinates.
 def cardinal_to_normal_coord(card: Cardinals) -> Coord:
@@ -152,33 +158,58 @@ collapse_stack.append(-1)
 ##########################
 
 start_next = True
+automatic = False
+
 while running:
-    if start_next:
+    if start_next | automatic:
         if len(collapse_stack) > 0:
             current_node = collapse_stack.pop()
-            comm.communicate(f"Currently processing {(current_node, parts[current_node].name) if current_node in parts.keys() else -1}...")
+            comm.communicate(f"Currently collapsing {(current_node, parts[current_node].name)}...")
 
-            children = model_hierarchy_tree.successors(current_node)
+            children = list(model_hierarchy_tree.successors(current_node))
             
-            comm.communicate(f"Determining sibling processing order.")
-            model_subtree = ModelTree(incoming_graph_data=full_model_tree.to_directed().subgraph(children).copy())
-            sibling_order = model_subtree.get_sibling_order()
-            
-            # Stack is LIFO and the nodes in the order should be processed in that order. So, append the nodes in reverse.
-            sibling_order.reverse()
-            for sib in sibling_order:
-                collapse_stack.append(sib)
-            
-            if len(sibling_order) > 0:
-                comm.communicate(f"Found sibling order: {list(map(lambda sib: (sib, parts[sib].name), sibling_order))}")
+            if children:
+                comm.communicate(f"Determining sibling processing order.")
+                model_subtree = ModelTree(incoming_graph_data=full_model_tree.subgraph(children).copy())
+
+                # Make sure children inherit translation and rotation from parent.
+                for k in children:
+                    parts[k].rotation += parts[current_node].rotation
+                    parts[k].translation += parts[current_node].translation
+
+                sibling_order = model_subtree.get_sibling_order()
+                if sibling_order:
+                    comm.communicate(f"Found sibling order: {list(map(lambda sib: (sib, parts[sib].name), sibling_order))}")
+                else:
+                    comm.communicate(f"No more siblings found for {(current_node, parts[current_node].name)}")
+                
+                # Only include parts and links of the children.
+                model = Model(
+                    {k: parts[k] for k in parts if k in children}, 
+                    [l for l in links if l.source in children and l.attachment in children],
+                    model_subtree)
+
+                updated_parts = model.solve()
+                model.set_parts_relative_to_container(parts[current_node].size)
+
+
+                # Stack is LIFO, sibling order is in increase order. So, append the nodes in reverse.
+                sibling_order.reverse()
+                for sib in sibling_order:
+                    collapse_stack.append(sib)
+                
+
+                comm.communicate(f"Remaining collapse stack {collapse_stack}")
+                comm.communicate(f"Parts status:")
+                for p in parts.items():
+                    comm.communicate(f"{p}")
             else:
-                comm.communicate(f"No more siblings found for {(current_node, parts[current_node].name)}")
-
-            comm.communicate(f"Stack {collapse_stack}")
-            start_next = True
-        else:
-            comm.communicate("Collapse queue is empty. No more parts to process.")
+                comm.communicate("No more children found.")
             start_next = False
+        else:
+            comm.communicate("Collapse stack is empty. No more parts to process.")
+            start_next = False
+            automatic = False
 
 
     for event in pygame.event.get():
@@ -187,8 +218,10 @@ while running:
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_l:
                 range = 255.0 / len(parts)
-                for p in parts.keys():
-                    drawing_queue.put(DrawJob(BB_to_rect(parts[p].size), Colour(0, 200, range * p)))
+                fit_parts = fit_canvas(parts)
+                for k in fit_parts:
+                    comm.communicate(fit_parts[k])
+                    drawing_queue.put(DrawJob(BB_to_rect(fit_parts[k].size), Colour(0, 200, range * max(k, 0))))
             if event.key == pygame.K_n:
                 for p in parts.keys():
                     bb = parts[p].size
@@ -201,6 +234,13 @@ while running:
                     drawing_queue.put(DrawJob(rotation_indicator_rect, Colour(0, 0, 0)))
             if event.key == pygame.K_c:
                 clear_drawing()
+
+            if event.key == pygame.K_SPACE:
+                start_next = True
+            if event.key == pygame.K_p:
+                for p in parts.items(): comm.communicate(p)
+            if event.key == pygame.K_a:
+                automatic = True
     
     while not drawing_queue.empty():
         job = drawing_queue.get()

@@ -1,6 +1,7 @@
 import networkx as nx
 from collections import namedtuple
-from queue import Queue
+from part import Part
+from model_hierarchy_tree import MHLink
 
 Edge = namedtuple("Edge", ["u", "v"])
 
@@ -10,10 +11,15 @@ class ModelTree(nx.DiGraph):
         self.add_nodes_from(nodes)
         self.add_edges_from(edges)
 
-    
+
+    @classmethod
+    def from_parts_and_links(cls, parts: dict[int, Part], links: list[MHLink], filter_non_adjacent=True):
+        return ModelTree(parts.keys(), [(l.source, l.attachment) for l in links if filter_non_adjacent and l.adjacency is not None])
+   
+
     def get_attachment_subtree(self, source: int, attachment: int) -> list[int]:
         # Only one edge needs to be removed to create two disjoint sets, as a tree is acyclic.
-        temp_model = self.copy()
+        temp_model = self.to_undirected()
         if temp_model.has_edge(source, attachment):
             temp_model.remove_edge(source, attachment)
         return nx.dfs_tree(temp_model, attachment).nodes

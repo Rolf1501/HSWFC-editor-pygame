@@ -6,21 +6,11 @@ import math
 from coord import Coord
 from boundingbox import BoundingBox as BB
 import networkx as nx
-from queue import Queue
+from part import Part
 from communicator import Communicator
-comm = Communicator()
+from util_data import MIN, MAX
 
-class Part:
-    def __init__(self, size: BB, rotation: int=0, translation: Coord=Coord(0,0), name="") -> None:
-        self.size = size
-        self.rotation = rotation
-        self.translation = translation
-        self.name = name
-    
-    def absolute_north(self) -> Cardinals:
-        # Assumes rotation expressed in degrees
-        return Cardinals((self.rotation / 90.0) % len(Cardinals))
-    
+comm = Communicator()
 
 class Model:  
     def __init__(self, parts: dict[int, Part], links: list[MHLink], model_tree: ModelTree=None):
@@ -29,19 +19,15 @@ class Model:
         if model_tree is not None:
             self.model_tree = model_tree
         else:
-            self.model_tree = self.to_model_tree(parts, links)
+            self.model_tree = ModelTree.from_parts_and_links(parts, links)
         
-        assert nx.is_tree(self.model_tree)
+        assert nx.is_forest(self.model_tree)
         
         self.model_subtrees_memoi: dict[(int,int), list[int]] = {}
-        self._precalc_tree_cut_sets()
+        self._precalc_subtree_nodes_sets()
 
 
-    @staticmethod
-    def to_model_tree(parts: dict[int, Part], links: list[MHLink], filter_non_adjacent=True) -> ModelTree:
-        return ModelTree(parts.keys(), [(l.source, l.attachment) for l in links if filter_non_adjacent and l.adjacency is not None])
-        
-    def _precalc_tree_cut_sets(self):
+    def _precalc_subtree_nodes_sets(self):
         comm.communicate("Deriving subtrees...")
         for l in self.links:
             if (l.source, l.attachment) in self.model_tree.edges:
@@ -62,7 +48,24 @@ class Model:
         self._determine_adjacency_translations()
         self._determine_property_translations()
         self._translate_all()
+        return self.parts
 
+
+    def set_parts_relative_to_container(self, container: BB):
+        bb: BB = BB(MAX, MIN, MAX, MIN, auto_adjust=False)
+        for p in self.parts:
+            part_bb = self.parts[p].size
+            bb.minx = min(part_bb.minx, bb.minx)
+            bb.maxx = max(part_bb.maxx, bb.maxx)
+            bb.miny = min(part_bb.miny, bb.miny)
+            bb.maxy = max(part_bb.maxy, bb.maxy)
+
+        if container.can_contain(bb):
+            translation = container.min_coord() - bb.min_coord()
+        else:
+            translation = container.center() - bb.center()
+        for k in self.parts:
+            self.parts[k].size.translate(translation)
 
     def _translate_all(self):
         for k in self.parts.keys():
@@ -71,9 +74,7 @@ class Model:
 
     @staticmethod
     def _translate_part(part: Part) -> BB:
-        t_x = part.translation.x
-        t_y = part.translation.y
-        return part.size + BB(t_x, t_x, t_y, t_y)
+        return part.size.translate(part.translation)
 
 
     def _determine_adjacency_translations(self):
@@ -139,7 +140,7 @@ class Model:
 
                 if rotation != 0:
                     # Rotation needs to be propagated to all parts attached to the attachment.
-                    comm.communicate(f"Propagating rotation to attachments subtree of part {l.attachment}")
+                    comm.communicate(f"Propagating rotation to attachments subtree {subtree_nodes} of part {l.attachment}")
                     for n in subtree_nodes:
                         self.parts[n].rotation += rotation
 
