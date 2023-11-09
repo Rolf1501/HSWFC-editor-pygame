@@ -6,15 +6,16 @@ from model_hierarchy_tree import MHLink
 Edge = namedtuple("Edge", ["u", "v"])
 
 class ModelTree(nx.DiGraph):
-    def __init__(self, nodes: list[int]=[], edges: list[Edge]=[], incoming_graph_data=None, **attr):
+    def __init__(self, nodes: list[int]=[], links: list[MHLink]=[], incoming_graph_data=None, **attr):
         super().__init__(incoming_graph_data, **attr)
         self.add_nodes_from(nodes)
-        self.add_edges_from(edges)
+        self.add_edges_from([(l.source, l.attachment) for l in links if l.adjacency is not None])
+        self.links = links
 
 
     @classmethod
-    def from_parts_and_links(cls, parts: dict[int, Part], links: list[MHLink], filter_non_adjacent=True):
-        return ModelTree(parts.keys(), [(l.source, l.attachment) for l in links if filter_non_adjacent and l.adjacency is not None])
+    def from_parts(cls, parts: dict[int, Part], links: list[MHLink]):
+        return ModelTree(parts.keys(), links)
    
 
     def get_attachment_subtree(self, source: int, attachment: int) -> list[int]:

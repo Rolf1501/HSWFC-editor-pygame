@@ -7,8 +7,10 @@ from coord import Coord
 from boundingbox import BoundingBox as BB
 import networkx as nx
 from part import Part
-from communicator import Communicator
+from communicator import Communicator, Verbosity as V
 from util_data import MIN, MAX
+import numpy as np
+
 
 comm = Communicator()
 
@@ -19,7 +21,7 @@ class Model:
         if model_tree is not None:
             self.model_tree = model_tree
         else:
-            self.model_tree = ModelTree.from_parts_and_links(parts, links)
+            self.model_tree = ModelTree.from_parts(parts, links)
         
         assert nx.is_forest(self.model_tree)
         
@@ -48,10 +50,14 @@ class Model:
         self._determine_adjacency_translations()
         self._determine_property_translations()
         self._translate_all()
+
         return self.parts
 
 
-    def set_parts_relative_to_container(self, container: BB):
+    def contain_in(self, container: BB):
+        """
+        Tries to fit all parts inside the container.
+        """
         bb: BB = BB(MAX, MIN, MAX, MIN, auto_adjust=False)
         for p in self.parts:
             part_bb = self.parts[p].size
@@ -140,48 +146,46 @@ class Model:
 
                 if rotation != 0:
                     # Rotation needs to be propagated to all parts attached to the attachment.
-                    comm.communicate(f"Propagating rotation to attachments subtree {subtree_nodes} of part {l.attachment}")
+                    comm.communicate(f"Propagating rotation to attachments subtree {subtree_nodes} of part {l.attachment}", V.LOW)
                     for n in subtree_nodes:
                         self.parts[n].rotation += rotation
 
 
     def _rotate_all(self):
         for k in self.parts.keys():
-            self.parts[k].size = self._rotate_part(self.parts[k])
+            self.parts[k].size = self.rotate_part_bb(self.parts[k].size, self.parts[k].rotation)
         
 
     @staticmethod
-    def _rotate_part(part: Part) -> BB:
+    def rotate_part_bb(bb: BB, rotation: int, origin: Coord = Coord(0,0,0)) -> BB:
         """
         Currently done in 2D. Needs extension for 3D later
         """
-        bb = part.size
-        rotation = part.rotation
 
-        # Same as translation to the origin
-        size_vector = Coord(bb.width(), bb.height())
 
         # rotation: [[cos a, -sin a], [sin a, cos a]]  [x, y]
         # rotated vector: (x * cos a - y * sin a), (x * sin a + y * cos a)
 
         # TODO: memoi/precalc the cos and sin outcomes.
         rotation_norm = rotation % 360
-        part.rotation = rotation_norm
         rad = math.radians(rotation_norm)
         cosa = math.cos(rad)
         sina = math.sin(rad)
-        rot_coord = Coord(size_vector.x * cosa - size_vector.y * sina, size_vector.x * sina + size_vector.y * cosa)
+
+        rot_matrix = np.asarray([[cosa, -sina], [sina, cosa]])
         
-        trans_rot_coord = rot_coord + Coord(bb.minx, bb.miny)
+        min_coord = (bb.min_coord() - origin).to_numpy_array() 
+        max_coord = (bb.max_coord() - origin).to_numpy_array()
+        min_rot_coord = np.matmul(rot_matrix, min_coord)
+        max_rot_coord = np.matmul(rot_matrix, max_coord)
 
         rot_bb = BB(
-            int(math.ceil(min(bb.minx, trans_rot_coord.x))),
-            int(math.ceil(max(0, trans_rot_coord.x))),
-            int(math.ceil(min(bb.miny, trans_rot_coord.y))),
-            int(math.ceil(max(0, trans_rot_coord.y))))
+            min(min_rot_coord[0], max_rot_coord[0]),
+            max(min_rot_coord[0], max_rot_coord[0]),
+            min(min_rot_coord[1], max_rot_coord[1]),
+            max(min_rot_coord[1], max_rot_coord[1]),
+        ).translate(origin)
         
-        rot_bb += rot_bb.to_positive_translation()
-
         return rot_bb
                 
 

@@ -1,3 +1,5 @@
+import numpy as np
+
 class Coord:
     def __init__(self,x,y,z=0):
         self.x = x
@@ -28,5 +30,8 @@ class Coord:
         self.y *= scalar
         self.z *= scalar
 
-    def toTuple(self):
+    def to_tuple(self):
         return (self.x, self.y)
+
+    def to_numpy_array(self):
+        return np.asarray([self.x, self.y])

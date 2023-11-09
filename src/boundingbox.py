@@ -66,6 +66,10 @@ class BoundingBox:
 
     def min_coord(self) -> Coord:
         return Coord(self.minx, self.miny)
+    
+
+    def max_coord(self) -> Coord:
+        return Coord(self.maxx, self.maxy)
 
 
     def translate(self, coord: Coord):
