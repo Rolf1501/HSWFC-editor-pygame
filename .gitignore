@@ -1,4 +1,4 @@
 __pycache__/
 .vscode/
 .ipynb_checkpoints
-.git-init.sh
+git-init.sh
