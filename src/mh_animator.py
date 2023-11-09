@@ -193,7 +193,7 @@ while running:
                 model.set_parts_relative_to_container(parts[current_node].size)
 
 
-                # Stack is LIFO, sibling order is in increase order. So, append the nodes in reverse.
+                # Stack is LIFO, sibling order is in increasing order. So, append the nodes in reverse.
                 sibling_order.reverse()
                 for sib in sibling_order:
                     collapse_stack.append(sib)
@@ -205,6 +205,9 @@ while running:
                     comm.communicate(f"{p}")
             else:
                 comm.communicate("No more children found.")
+                # TODO:
+                # Collapse this section and return
+                # Return to parent when all children are processed.
             start_next = False
         else:
             comm.communicate("Collapse stack is empty. No more parts to process.")
