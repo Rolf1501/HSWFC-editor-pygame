@@ -106,7 +106,7 @@ full_model_tree = ModelTree.from_parts(parts, links)
 
 
 def fit_canvas(parts: dict[int, Part]):
-    # Normalise all parts' bounding boxes to fit the canvas.
+    # Normalize all parts' bounding boxes to fit the canvas.
     fit_parts = deepcopy(parts)
     minx = MAX
     miny = MAX
@@ -116,10 +116,8 @@ def fit_canvas(parts: dict[int, Part]):
         if fit_parts[k].size.miny < miny:
             miny = fit_parts[k].size.miny
 
-    # translate = BB(-minx, -minx, -miny, -miny)
     translation = Coord(-minx, -miny)
     for k in fit_parts:
-        # fit_parts[k].size += translate
         fit_parts[k].size.translate(translation)
     
     return fit_parts
@@ -173,9 +171,9 @@ def process(node_id: int, parts: dict[int, Part], mht: mht.MHTree, processed: di
         # Processing order corresponds to the dependencies of the siblings.
         process_order = model_subtree.get_sibling_order()
         if process_order:
-            comm.communicate(f"Found sibling order: {list(map(lambda sib: (sib, parts[sib].name), process_order))}", V.LOW)
+            comm.communicate(f"Found sibling order: {list(map(lambda sib: (sib, parts[sib].name), process_order))}", V.HIGH)
         else:
-            comm.communicate(f"No more siblings found for {part_info}", V.LOW)
+            comm.communicate(f"No more siblings found for {part_info}", V.HIGH)
         
         # Arrange all children.
         # Make sure children inherit translation and rotation from parent.
@@ -203,9 +201,9 @@ def process(node_id: int, parts: dict[int, Part], mht: mht.MHTree, processed: di
         processed[node_id] = True
 
         comm.communicate(f"All children of node {part_info} completed. Fitting parts...")
-        comm.communicate(f"Parts status:", V.LOW)
+        comm.communicate(f"Parts status:", V.HIGH)
         for p in parts.items():
-            comm.communicate(f"\t{p}", V.LOW)
+            comm.communicate(f"\t{p}", V.HIGH)
 
     else:
         comm.communicate("No more children found. Checking adjacent siblings processing status...")
@@ -248,7 +246,7 @@ while running:
                 if not fit_parts:
                     fit_parts = fit_canvas(parts)
                 for k in fit_parts:
-                    comm.communicate(fit_parts[k], V.LOW)
+                    comm.communicate(fit_parts[k], V.HIGH)
                     drawing_queue.put(DrawJob(BB_to_rect(fit_parts[k].size), Colour(0, 200, range * max(k, 0))))
             if event.key == pygame.K_n:
                 if not fit_parts:
@@ -271,6 +269,9 @@ while running:
                 for p in parts.items(): comm.communicate(p)
             if event.key == pygame.K_a:
                 automatic = True
+            if event.key == pygame.K_v:
+                comm.cycle_verbosity(True)
+                comm.communicate(f"Set verbosity level to {comm.verbosity}")
     
     while not drawing_queue.empty():
         job = drawing_queue.get()
