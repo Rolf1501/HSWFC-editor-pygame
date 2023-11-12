@@ -4,6 +4,8 @@ class Cardinals(Enum):
     EAST = 1
     SOUTH = 2
     WEST = 3
+    TOP = 4
+    BOTTOM = 5
 
 
 class Operations(Enum):
@@ -15,7 +17,8 @@ class Operations(Enum):
 class Dimensions(Enum):
     X = 0
     Y = 1
-    # Z = 2
+    Z = 2
+
 
 MAX = 9999999
 MIN = -MAX

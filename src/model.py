@@ -60,27 +60,29 @@ class Model:
         """
         bb: BB = BB(MAX, MIN, MAX, MIN, auto_adjust=False)
         for p in self.parts:
-            part_bb = self.parts[p].size
+            part_bb = self.parts[p].bb
             bb.minx = min(part_bb.minx, bb.minx)
             bb.maxx = max(part_bb.maxx, bb.maxx)
             bb.miny = min(part_bb.miny, bb.miny)
             bb.maxy = max(part_bb.maxy, bb.maxy)
+            bb.minz = max(part_bb.minz, bb.minz)
+            bb.maxz = max(part_bb.maxz, bb.maxz)
 
-        # if container.can_contain(bb):
-        #     translation = container.min_coord() - bb.min_coord()
-        # else:
-        translation = container.center() - bb.center()
+        if container.can_contain(bb):
+            translation = container.min_coord() - bb.min_coord()
+        else:
+            translation = container.center() - bb.center()
         for k in self.parts:
-            self.parts[k].size.translate(translation)
+            self.parts[k].bb.translate(translation)
 
     def _translate_all(self):
         for k in self.parts.keys():
-            self.parts[k].size = self._translate_part(self.parts[k])
+            self.parts[k].bb = self._translate_part(self.parts[k])
 
 
     @staticmethod
     def _translate_part(part: Part) -> BB:
-        return part.size.translate(part.translation)
+        return part.bb.translate(part.translation)
 
 
     def _determine_adjacency_translations(self):
@@ -103,7 +105,7 @@ class Model:
 
     def _adjacency_translation(self, source_id: int, attachment_id: int, adjacency: Cardinals, relative_adjacency=True):
         # The links are relative, so need to take the source's rotation into account.
-        translation = Coord(0,0)
+        translation = Coord(0,0,0)
         source = self.parts[source_id]
         attachment = self.parts[attachment_id]
 
@@ -111,16 +113,22 @@ class Model:
             adjacency = Cardinals((adjacency.value + source.absolute_north().value) % len(Cardinals))
 
         if adjacency == Cardinals.EAST:
-            translation.x = source.size.maxx - attachment.size.minx
+            translation.x = source.bb.maxx - attachment.bb.minx
 
         elif adjacency == Cardinals.WEST:
-            translation.x = source.size.minx - attachment.size.maxx
+            translation.x = source.bb.minx - attachment.bb.maxx
 
         elif adjacency == Cardinals.NORTH:
-            translation.y = source.size.miny - attachment.size.maxy
+            translation.y = source.bb.miny - attachment.bb.maxy
 
         elif adjacency == Cardinals.SOUTH:
-            translation.y = source.size.maxy - attachment.size.miny
+            translation.y = source.bb.maxy - attachment.bb.miny
+
+        elif adjacency == Cardinals.TOP:
+            translation.z = source.bb.maxz - attachment.bb.minz
+        
+        elif adjacency == Cardinals.BOTTOM:
+            translation.z = source.bb.minz - attachment.bb.maxz
         
         return translation
 
@@ -134,6 +142,11 @@ class Model:
             attachment = self.parts[l.attachment]
 
             rotation_diff = abs(source.rotation - attachment.rotation)
+
+            # If the up directions do not match.
+            if source.up.to_numpy_array().dot(attachment.up.to_numpy_array()) <= 0:
+                attachment.up = source.up
+
             for p in l.properties:
                 rotation = 0
                 if p.operation == Operations.ORTH:
@@ -153,29 +166,20 @@ class Model:
 
     def _rotate_all(self):
         for k in self.parts.keys():
-            self.parts[k].size = self.rotate_part_bb(self.parts[k].size, self.parts[k].rotation)
+            self.parts[k].bb = self.rotate_part_bb(self.parts[k].bb, self.parts[k].rotation, self.parts[k].up)
         
 
-    @staticmethod
-    def rotate_part_bb(bb: BB, rotation: int, origin: Coord = Coord(0,0,0)) -> BB:
+    def rotate_part_bb(self, bb: BB, rotation: int, up: Coord, origin: Coord = Coord(0,0,0)) -> BB:
         """
         Currently done in 2D. Needs extension for 3D later
         """
-
-
         # rotation: [[cos a, -sin a], [sin a, cos a]]  [x, y]
         # rotated vector: (x * cos a - y * sin a), (x * sin a + y * cos a)
-
-        # TODO: memoi/precalc the cos and sin outcomes.
-        rotation_norm = rotation % 360
-        rad = math.radians(rotation_norm)
-        cosa = math.cos(rad)
-        sina = math.sin(rad)
-
-        rot_matrix = np.asarray([[cosa, -sina], [sina, cosa]])
+        rot_matrix = self._rotation_matrix(rotation, up.to_dimension())
         
-        min_coord = (bb.min_coord() - origin).to_numpy_array() 
+        min_coord = (bb.min_coord() - origin).to_numpy_array()
         max_coord = (bb.max_coord() - origin).to_numpy_array()
+
         min_rot_coord = np.matmul(rot_matrix, min_coord)
         max_rot_coord = np.matmul(rot_matrix, max_coord)
 
@@ -184,10 +188,38 @@ class Model:
             max(min_rot_coord[0], max_rot_coord[0]),
             min(min_rot_coord[1], max_rot_coord[1]),
             max(min_rot_coord[1], max_rot_coord[1]),
+            min(min_rot_coord[2], max_rot_coord[2]),
+            max(min_rot_coord[2], max_rot_coord[2]),
         ).translate(origin)
         
         return rot_bb
-                
+
+
+    def _rotation_matrix(self, rotation: int, axis: Dimensions):
+        rad = math.radians(rotation)
+        cosa = math.cos(rad)
+        sina = math.sin(rad)
+        if axis == Dimensions.X:
+            return np.asarray([
+                [1,0,0],
+                [0,cosa,-sina],
+                [0,sina,cosa]
+            ])
+        elif axis == Dimensions.Y:
+            return np.asarray([
+                [cosa,0,sina],
+                [0,1,0],
+                [-sina,0,cosa]
+            ])
+        elif axis == Dimensions.Z:
+            return np.asarray([
+                [cosa,-sina,0],
+                [sina,cosa,0],
+                [0,0,1],
+            ])
+        else:
+            return np.zeros((3,3))
+
 
     def _center_translation(self, source_id: int, attachment_id: int, dimension: Dimensions) -> Coord:
         """
@@ -196,12 +228,14 @@ class Model:
         source = self.parts[source_id]
         attachment = self.parts[attachment_id]
 
-        source_center = source.size.center()
-        attachment_center = attachment.size.center()
+        source_center = source.bb.center()
+        attachment_center = attachment.bb.center()
         diff_center = source_center - attachment_center
         # In case the part has been rotated such that the local axes do not align with the global axes, switch the dimension.
         if source.absolute_north() == Cardinals.EAST or source.absolute_north() == Cardinals.WEST:
-            dimension = Dimensions((dimension.value + 1) % len(Dimensions))
+            dimension = Dimensions.X if dimension == Dimensions.Y else Dimensions.Y
+        elif source.absolute_north() == Cardinals.TOP or source.absolute_north() == Cardinals.BOTTOM:
+            dimension = Dimensions.Z if dimension == Dimensions.Y else Dimensions.Y
         if dimension == Dimensions.X:
             return Coord(diff_center.x, 0)
         elif dimension == Dimensions.Y:

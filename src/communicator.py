@@ -5,7 +5,7 @@ class Verbosity(Enum):
     HIGH = 0
 
 class Communicator(object):
-    def __init__(self, verbosity: Verbosity=Verbosity.LOW):
+    def __init__(self, verbosity: Verbosity=Verbosity.HIGH):
         self.verbosity = verbosity
 
     def __new__(cls):

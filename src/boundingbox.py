@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from coord import Coord
+from util_data import Dimensions as D
 
 @dataclass()
 class BoundingBox:
@@ -7,6 +8,8 @@ class BoundingBox:
     maxx: int
     miny: int
     maxy: int
+    minz: int = field(default=0)
+    maxz: int = field(default=0)
     auto_adjust: bool = field(default=True) # If True, automatically sets the bounds such that min is always less than max.
 
     def __post_init__(self):
@@ -19,10 +22,17 @@ class BoundingBox:
                 temp = self.miny
                 self.miny = self.maxy
                 self.maxy = temp
+            if self.maxz < self.minz:
+                temp = self.minz
+                self.minz = self.maxz
+                self.maxz = temp
  
     
     def __add__(self, other):
-        return BoundingBox(self.minx + other.minx, self.maxx + other.maxx, self.miny + other.miny, self.maxy + other.maxy)
+        return BoundingBox(
+            self.minx + other.minx, self.maxx + other.maxx, 
+            self.miny + other.miny, self.maxy + other.maxy, 
+            self.minz + other.minz, self.maxz + other.maxz)
 
 
     def width(self):
@@ -31,10 +41,14 @@ class BoundingBox:
 
     def height(self):
         return self.maxy - self.miny
-    
 
-    def center(bb) -> Coord:
-        return Coord(bb.width() * 0.5 + bb.minx, bb.height() * 0.5 + bb.miny)
+
+    def depth(self):
+        return self.maxz - self.minz
+
+
+    def center(self) -> Coord:
+        return Coord(self.width() * 0.5 + self.minx, self.height() * 0.5 + self.miny, self.depth() * 0.5 + self.minz)
 
 
     def to_positive_translation(self):
@@ -45,6 +59,9 @@ class BoundingBox:
         if self.miny < 0:
             t.miny = -self.miny
             t.maxy = -self.miny
+        if self.minz < 0:
+            t.minz = -self.minz
+            t.maxz = -self.minz
        
         return t
 
@@ -54,7 +71,7 @@ class BoundingBox:
 
 
     def can_contain(self, other):
-        if other.width() <= self.width() and other.height() <= self.height():
+        if other.width() <= self.width() and other.height() <= self.height() and other.depth() <= self.depth():
             return True
         return False
 
@@ -65,11 +82,11 @@ class BoundingBox:
 
 
     def min_coord(self) -> Coord:
-        return Coord(self.minx, self.miny)
+        return Coord(self.minx, self.miny, self.minz)
     
 
     def max_coord(self) -> Coord:
-        return Coord(self.maxx, self.maxy)
+        return Coord(self.maxx, self.maxy, self.maxz)
 
 
     def translate(self, coord: Coord):
@@ -77,4 +94,6 @@ class BoundingBox:
         self.maxx += coord.x
         self.miny += coord.y
         self.maxy += coord.y
+        self.minz += coord.z
+        self.maxz += coord.z
         return self

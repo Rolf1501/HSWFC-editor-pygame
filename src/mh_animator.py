@@ -15,7 +15,7 @@ from communicator import Communicator, Verbosity as V
 from model_tree import ModelTree
 from queue import Queue
 from copy import deepcopy
-import networkx as nx
+from random import randint
 
 comm = Communicator()
 
@@ -113,14 +113,14 @@ def fit_canvas(parts: dict[int, Part]):
     minx = MAX
     miny = MAX
     for k in fit_parts:
-        if fit_parts[k].size.minx < minx:
-            minx = fit_parts[k].size.minx
-        if fit_parts[k].size.miny < miny:
-            miny = fit_parts[k].size.miny
+        if fit_parts[k].bb.minx < minx:
+            minx = fit_parts[k].bb.minx
+        if fit_parts[k].bb.miny < miny:
+            miny = fit_parts[k].bb.miny
 
     translation = Coord(-minx, -miny)
     for k in fit_parts:
-        fit_parts[k].size.translate(translation)
+        fit_parts[k].bb.translate(translation)
     
     return fit_parts
 
@@ -192,7 +192,7 @@ def process(node_id: int, parts: dict[int, Part], mht: mht.MHTree, processed: di
             model_subtree)
 
         model.solve()
-        model.contain_in(part.size)
+        model.contain_in(part.bb)
 
         # Process each child following the sibling order.
         for node in process_order:
@@ -250,12 +250,12 @@ while running:
                     fit_parts = fit_canvas(parts)
                 for k in fit_parts:
                     comm.communicate(fit_parts[k], V.HIGH)
-                    drawing_queue.put(DrawJob(BB_to_rect(fit_parts[k].size), Colour(0, 200, range * max(k, 0))))
+                    drawing_queue.put(DrawJob(BB_to_rect(fit_parts[k].bb), Colour(randint(50,200), 200, range * max(k, 0))))
             if event.key == pygame.K_n:
                 if not fit_parts:
                     fit_parts = fit_canvas(parts)
                 for p in fit_parts.keys():
-                    bb = fit_parts[p].size
+                    bb = fit_parts[p].bb
                     rotation_vector = cardinal_to_normal_coord(parts[p].absolute_north())
                     rotation_vector.scale(28)
                     rotation_vector += Coord(2,2)
