@@ -64,6 +64,7 @@ drawing_queue = Queue[DrawJob]()
 parts: dict[int, Part] = {
     -1: Part(BB(0,0,0,0), name="Root"),
     0: Part(BB(0,500,0,200), name="Car frame"),
+    9: Part(BB(0,500,0,150), name="Frame"),
 
     1: Part(BB(0,300,0,75), name="Front frame"),
     2: Part(BB(0,250,0,50), name="Front axle"),
@@ -81,6 +82,7 @@ edges = [
     mht.MHEdge(-1, 0),
     mht.MHEdge(-1, 1),
     mht.MHEdge(-1, 5),
+    mht.MHEdge(0, 9),
     mht.MHEdge(1, 2),
     mht.MHEdge(1, 3),
     mht.MHEdge(1, 4),
@@ -154,6 +156,8 @@ process_log: list[ProcessState] = []
 
 def process(node_id: int, parts: dict[int, Part], mht: mht.MHTree, processed: dict[int, bool], full_model_tree: ModelTree):
     process_log.append(ProcessState(node_id, parts, processed))
+    comm.communicate("Process log:")
+    map(lambda pl: comm.communicate(pl), process_log)
     part = parts[node_id]
     part_info = (node_id, part.name)
     comm.communicate(f"Currently collapsing {part_info}...")
@@ -163,7 +167,7 @@ def process(node_id: int, parts: dict[int, Part], mht: mht.MHTree, processed: di
     if children:
 
         # Determine collapse order of children.
-        comm.communicate(f"Determining sibling processing order.")
+        comm.communicate(f"Determining sibling processing order...")
 
         sibling_links = [link for link in links if link.source in children and link.attachment in children]
         model_subtree = ModelTree(incoming_graph_data=full_model_tree.subgraph(children), links=sibling_links)
@@ -207,11 +211,10 @@ def process(node_id: int, parts: dict[int, Part], mht: mht.MHTree, processed: di
 
     else:
         comm.communicate("No more children found. Checking adjacent siblings processing status...")
+        # TODO: collapse meta node into leaves.
         # If no other adjacent siblings have been processed yet, simply collapse.
         # Otherwise, check where that sibling is, how it related to this node and where it overlaps.
         # That determines the initial seeds/tiles for this part.
-
-        # TODO:
         # Collapse this section and return.
         # Return to parent when all children are processed.
         processed[node_id] = True

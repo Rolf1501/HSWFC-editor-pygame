@@ -66,10 +66,10 @@ class Model:
             bb.miny = min(part_bb.miny, bb.miny)
             bb.maxy = max(part_bb.maxy, bb.maxy)
 
-        if container.can_contain(bb):
-            translation = container.min_coord() - bb.min_coord()
-        else:
-            translation = container.center() - bb.center()
+        # if container.can_contain(bb):
+        #     translation = container.min_coord() - bb.min_coord()
+        # else:
+        translation = container.center() - bb.center()
         for k in self.parts:
             self.parts[k].size.translate(translation)
 
@@ -146,7 +146,7 @@ class Model:
 
                 if rotation != 0:
                     # Rotation needs to be propagated to all parts attached to the attachment.
-                    comm.communicate(f"Propagating rotation to attachments subtree {subtree_nodes} of part {l.attachment}", V.LOW)
+                    comm.communicate(f"Propagating rotation to attachments subtree {subtree_nodes} of part {l.attachment}", V.HIGH)
                     for n in subtree_nodes:
                         self.parts[n].rotation += rotation
 
