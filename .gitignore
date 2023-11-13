@@ -5,3 +5,6 @@ Lib/
 Scripts/
 pyvenv.cfg
 git-init.sh
+etc/
+share/
+.idea/
