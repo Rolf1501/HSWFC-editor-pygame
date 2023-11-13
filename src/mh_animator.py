@@ -3,7 +3,7 @@
 # = PYGAME PROGRAM
 # =====================================
 # INIT pygame
-import pygame
+# import pygame
 from coord import Coord
 import model_hierarchy_tree as mht
 from boundingbox import BoundingBox as BB
@@ -17,44 +17,46 @@ from queue import Queue
 from copy import deepcopy
 from random import randint
 
+import open3d as o3d
+
 comm = Communicator()
 
-pygame.init()
+# pygame.init()
 
 select_mode = False
 
 WINDOW_SIZE = [800,600]
 DRAW_SURF_SIZE = (760,560)
-font = pygame.font.SysFont('segoeuisymbol',20,16) 
+# font = pygame.font.SysFont('segoeuisymbol',20,16)
 
-clock = pygame.time.Clock()  # The clock is needed to regulate the update loop such that we can process input between the frames, see pygame doc
-screen = pygame.display.set_mode((WINDOW_SIZE[0], WINDOW_SIZE[1]))
-draw_surface = pygame.Surface(DRAW_SURF_SIZE,flags=pygame.HWSURFACE)
+# clock = pygame.time.Clock()  # The clock is needed to regulate the update loop such that we can process input between the frames, see pygame doc
+# screen = pygame.display.set_mode((WINDOW_SIZE[0], WINDOW_SIZE[1]))
+# draw_surface = pygame.Surface(DRAW_SURF_SIZE,flags=pygame.HWSURFACE)
 
 drawing = False
 running = True
 
 start = (0,0)
 end = (0,0)
-screen.fill("white")
-draw_surface.fill("white")
-draw_surface_offset = (0,0)
+# screen.fill("white")
+# draw_surface.fill("white")
+# draw_surface_offset = (0,0)
 
 Colour = namedtuple("Colour", ["r", "g", "b"])
 
 
-class DrawJob:
-    def __init__(self, rect: pygame.Rect, colour: Colour) -> None:
-        self.rect = rect
-        self.colour = colour
+# class DrawJob:
+#     def __init__(self, rect: pygame.Rect, colour: Colour) -> None:
+#         self.rect = rect
+#         self.colour = colour
 
-def BB_to_rect(bb: BB):
-    return pygame.Rect(bb.minx, bb.miny, bb.width(), bb.height())
+# def BB_to_rect(bb: BB):
+#     return pygame.Rect(bb.minx, bb.miny, bb.width(), bb.height())
 
-def clear_drawing():
-    draw_surface.fill("white")
+# def clear_drawing():
+#     draw_surface.fill("white")
 
-drawing_queue = Queue[DrawJob]()
+# drawing_queue = Queue[DrawJob]()
 
 
 # TOY EXAMPLE
@@ -62,7 +64,7 @@ drawing_queue = Queue[DrawJob]()
 # Collection of all parts. 
 # Orientations are implicit. All initially point towards North.
 parts: dict[int, Part] = {
-    -1: Part(BB(0,0,0,0), name="Root"),
+    -1: Part(BB(0,1,0,1), name="Root"),
     0: Part(BB(0,500,0,200), name="Car frame"),
     9: Part(BB(0,500,0,150), name="Frame"),
 
@@ -76,6 +78,7 @@ parts: dict[int, Part] = {
     7: Part(BB(0,85,0,25), name="Rear wheel"),
     8: Part(BB(0,85,0,25), name="Rear wheel"),
 }
+
 original_parts = deepcopy(parts)
 # Edges determine the hierarchy such that for each edge (u, v), u consists of v.
 edges = [
@@ -112,13 +115,16 @@ def fit_canvas(parts: dict[int, Part]):
     fit_parts = deepcopy(parts)
     minx = MAX
     miny = MAX
+    minz = MAX
     for k in fit_parts:
         if fit_parts[k].bb.minx < minx:
             minx = fit_parts[k].bb.minx
         if fit_parts[k].bb.miny < miny:
             miny = fit_parts[k].bb.miny
+        if fit_parts[k].bb.minz < minz:
+            minz = fit_parts[k].bb.minz
 
-    translation = Coord(-minx, -miny)
+    translation = Coord(-minx, -miny, -minz)
     for k in fit_parts:
         fit_parts[k].bb.translate(translation)
     
@@ -145,8 +151,7 @@ nodes.append(root)
 model_hierarchy_tree = mht.MHTree(nodes, edges)
 
 Iteration = namedtuple("Iteration", ["current_node_id", "model_tree", "parent_node_id"])
-collapse_stack: list[Iteration] = []
-collapse_stack.append(Iteration(-1, None, None))
+collapse_stack: list[Iteration] = [Iteration(-1, None, None)]
 
 
 ProcessState = namedtuple("ProcessState", ["node_id", "parts", "processed"])
@@ -231,55 +236,71 @@ start_next = True
 automatic = False
 backtracking = False # True if the leaves have been reached.
 
-fit_parts = []
 
-while running:
-    if start_next | automatic:
-        can_continue = process(-1, parts, model_hierarchy_tree, processed, full_model_tree)
-        automatic &= can_continue
+process(-1, parts, model_hierarchy_tree, processed, full_model_tree)
+vis = o3d.visualization.VisualizerWithKeyCallback()
+fit_parts = fit_canvas(parts)
 
-        start_next = False
+meshes = []
+for p in fit_parts.values():
+    mesh_box = o3d.geometry.TriangleMesh.create_box(p.bb.width(), p.bb.height(), p.bb.depth())
+    mesh_box.paint_uniform_color([0.9, 0.1, 0.1])
+    mesh_box.compute_vertex_normals()
+    mesh_box.translate(p.bb.min_coord().to_tuple())
+    meshes.append(mesh_box)
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        if event.type == pygame.KEYUP:
-            if event.key == pygame.K_l:
-                range = 255.0 / len(parts)
-                if not fit_parts:
-                    fit_parts = fit_canvas(parts)
-                for k in fit_parts:
-                    comm.communicate(fit_parts[k], V.HIGH)
-                    drawing_queue.put(DrawJob(BB_to_rect(fit_parts[k].bb), Colour(randint(50,200), 200, range * max(k, 0))))
-            if event.key == pygame.K_n:
-                if not fit_parts:
-                    fit_parts = fit_canvas(parts)
-                for p in fit_parts.keys():
-                    bb = fit_parts[p].bb
-                    rotation_vector = cardinal_to_normal_coord(parts[p].absolute_north())
-                    rotation_vector.scale(28)
-                    rotation_vector += Coord(2,2)
-                    center = bb.center()
-                    rotation_indicator = BB(center.x, center.x + rotation_vector.x, center.y, center.y + rotation_vector.y)
-                    rotation_indicator_rect = BB_to_rect(rotation_indicator)
-                    drawing_queue.put(DrawJob(rotation_indicator_rect, Colour(0, 0, 0)))
-            if event.key == pygame.K_c:
-                clear_drawing()
+vis.create_window(window_name="test",width=WINDOW_SIZE[0],height=WINDOW_SIZE[1])
+# map(lambda part: vis.add_geometry(part), meshes)
+for m in meshes:
+    vis.add_geometry(m)
+vis.run()
+# while running:
+#     if start_next | automatic:
+#         can_continue = process(-1, parts, model_hierarchy_tree, processed, full_model_tree)
+#         automatic &= can_continue
 
-            if event.key == pygame.K_SPACE:
-                start_next = True
-            if event.key == pygame.K_p:
-                for p in parts.items(): comm.communicate(p)
-            if event.key == pygame.K_a:
-                automatic = True
-            if event.key == pygame.K_v:
-                comm.cycle_verbosity(True)
-                comm.communicate(f"Set verbosity level to {comm.verbosity}")
+#         start_next = False
+
+#     for event in pygame.event.get():
+#         if event.type == pygame.QUIT:
+#             running = False
+#         if event.type == pygame.KEYUP:
+#             if event.key == pygame.K_l:
+#                 range = 255.0 / len(parts)
+#                 if not fit_parts:
+#                     fit_parts = fit_canvas(parts)
+#                 for k in fit_parts:
+#                     comm.communicate(fit_parts[k], V.HIGH)
+#                     drawing_queue.put(DrawJob(BB_to_rect(fit_parts[k].bb), Colour(randint(50,200), 200, range * max(k, 0))))
+#             if event.key == pygame.K_n:
+#                 if not fit_parts:
+#                     fit_parts = fit_canvas(parts)
+#                 for p in fit_parts.keys():
+#                     bb = fit_parts[p].bb
+#                     rotation_vector = cardinal_to_normal_coord(parts[p].absolute_north())
+#                     rotation_vector.scale(28)
+#                     rotation_vector += Coord(2,2)
+#                     center = bb.center()
+#                     rotation_indicator = BB(center.x, center.x + rotation_vector.x, center.y, center.y + rotation_vector.y)
+#                     rotation_indicator_rect = BB_to_rect(rotation_indicator)
+#                     drawing_queue.put(DrawJob(rotation_indicator_rect, Colour(0, 0, 0)))
+#             if event.key == pygame.K_c:
+#                 clear_drawing()
+
+#             if event.key == pygame.K_SPACE:
+#                 start_next = True
+#             if event.key == pygame.K_p:
+#                 for p in parts.items(): comm.communicate(p)
+#             if event.key == pygame.K_a:
+#                 automatic = True
+#             if event.key == pygame.K_v:
+#                 comm.cycle_verbosity(True)
+#                 comm.communicate(f"Set verbosity level to {comm.verbosity}")
     
-    while not drawing_queue.empty():
-        job = drawing_queue.get()
-        pygame.draw.rect(draw_surface, job.colour, job.rect)
+#     while not drawing_queue.empty():
+#         job = drawing_queue.get()
+#         pygame.draw.rect(draw_surface, job.colour, job.rect)
 
-    screen.blit(draw_surface, draw_surface_offset)
-    pygame.display.flip()
-    clock.tick(60)
+#     screen.blit(draw_surface, draw_surface_offset)
+#     pygame.display.flip()
+#     clock.tick(60)
