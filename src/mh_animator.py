@@ -9,12 +9,10 @@ from boundingbox import BoundingBox as BB
 from model import Part
 from util_data import *
 from collections import namedtuple
-from model import Model
 from communicator import Communicator, Verbosity as V
 from model_tree import ModelTree
-from queue import Queue
 from copy import deepcopy
-from random import randint
+from geometric_solver import GeometricSolver as GS
 
 import open3d as o3d
 
@@ -139,76 +137,6 @@ processed = {k: False for k in nodes}
 process_log: list[ProcessState] = []
 
 
-def process(node_id: int, parts: dict[int, Part], mht: mht.MHTree, processed: dict[int, bool],
-            full_model_tree: ModelTree):
-    process_log.append(ProcessState(node_id, parts, processed))
-    comm.communicate("Process log:")
-    map(lambda pl: comm.communicate(pl), process_log)
-    part = parts[node_id]
-    part_info = (node_id, part.name)
-    comm.communicate(f"Currently collapsing {part_info}...")
-    children = list(mht.successors(node_id))
-
-    # If the current node has children.
-    if children:
-
-        # Determine collapse order of children.
-        comm.communicate(f"Determining sibling processing order...")
-
-        sibling_links = [link for link in links if link.source in children and link.attachment in children]
-        model_subtree = ModelTree(incoming_graph_data=full_model_tree.subgraph(children), links=sibling_links)
-
-        # Processing order corresponds to the dependencies of the siblings.
-        process_order = model_subtree.get_sibling_order()
-        if process_order:
-            comm.communicate(f"Found sibling order: {list(map(lambda sib: (sib, parts[sib].name), process_order))}",
-                             V.HIGH)
-        else:
-            comm.communicate(f"No more siblings found for {part_info}", V.HIGH)
-
-        # Arrange all children.
-        # Make sure children inherit translation and rotation from parent.
-        for k in children:
-            parts[k].rotation += parts[node_id].rotation
-            parts[k].translation += parts[node_id].translation
-
-        # Only include parts and links of the children.
-        model = Model(
-            {k: parts[k] for k in children},
-            [l for l in links if l.source in children and l.attachment in children],
-            model_subtree)
-
-        model.solve()
-        model.contain_in(part.extent)
-
-        # Process each child following the sibling order.
-        for node in process_order:
-            process(node, parts, mht, processed, full_model_tree)
-
-        # TODO: after all children have been processed, assemble here.
-        # This is also the place where the tight fits can be made.
-        # Make use of properties stored in the link between the two parts.
-        # E.g. when aligning with center: move attachment to source along centerline until overlap occurs.
-        processed[node_id] = True
-
-        comm.communicate(f"All children of node {part_info} completed. Fitting parts...")
-        comm.communicate(f"Parts status:", V.HIGH)
-        for p in parts.items():
-            comm.communicate(f"\t{p}", V.HIGH)
-
-    else:
-        comm.communicate("No more children found. Checking adjacent siblings processing status...")
-        # TODO: collapse meta node into leaves.
-        # If no other adjacent siblings have been processed yet, simply collapse.
-        # Otherwise, check where that sibling is, how it related to this node and where it overlaps.
-        # That determines the initial seeds/tiles for this part.
-        # Collapse this section and return.
-        # Return to parent when all children are processed.
-        processed[node_id] = True
-
-    comm.communicate(f"Processing node {(node_id, parts[node_id].name)} complete.")
-    return True
-
 
 ##########################
 ###   MAIN GAME LOOP   ###
@@ -218,7 +146,8 @@ start_next = True
 automatic = False
 backtracking = False  # True if the leaves have been reached.
 
-process(-1, parts, model_hierarchy_tree, processed, full_model_tree)
+geo_solver = GS(model_hierarchy_tree, parts, full_model_tree)
+geo_solver.process(-1, processed)
 vis = o3d.visualization.VisualizerWithKeyCallback()
 fit_parts = fit_canvas(parts)
 
@@ -231,7 +160,7 @@ for p in fit_parts.values():
     meshes.append(mesh_box)
 
 vis.create_window(window_name="test", width=WINDOW_SIZE[0], height=WINDOW_SIZE[1])
-# map(lambda part: vis.add_geometry(part), meshes)
+
 for m in meshes:
     vis.add_geometry(m)
 vis.run()

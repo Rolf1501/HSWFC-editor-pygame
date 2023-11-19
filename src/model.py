@@ -11,29 +11,29 @@ from communicator import Communicator, Verbosity as V
 from util_data import MIN, MAX
 import numpy as np
 
-
 comm = Communicator()
 
-class Model:  
-    def __init__(self, parts: dict[int, Part], links: list[MHLink], model_tree: ModelTree=None):
+
+class Model:
+    def __init__(self, parts: dict[int, Part], links: list[MHLink] = [], model_tree: ModelTree = None):
         self.parts = parts
         self.links = links
         if model_tree is not None:
             self.model_tree = model_tree
         else:
             self.model_tree = ModelTree.from_parts(parts, links)
-        
-        assert nx.is_forest(self.model_tree)
-        
-        self.model_subtrees_memoi: dict[(int,int), list[int]] = {}
-        self._precalc_subtree_nodes_sets()
 
+        assert nx.is_forest(self.model_tree)
+
+        self.model_subtrees_memoi: dict[(int, int), list[int]] = {}
+        self._precalc_subtree_nodes_sets()
 
     def _precalc_subtree_nodes_sets(self):
         comm.communicate("Deriving subtrees...")
         for l in self.links:
             if (l.source, l.attachment) in self.model_tree.edges:
-                self.model_subtrees_memoi[(l.source, l.attachment)] = self.model_tree.get_attachment_subtree(l.source, l.attachment)
+                self.model_subtrees_memoi[(l.source, l.attachment)] = self.model_tree.get_attachment_subtree(l.source,
+                                                                                                             l.attachment)
             else:
                 # If the two nodes are not adjacent, the attachment group can be found by performing 
                 # a cut between the attachment and penultimate node in the shortest path from source to attachment.
@@ -41,7 +41,6 @@ class Model:
                 subtree = self.model_tree.get_attachment_subtree(shortest_path[-2], shortest_path[-1])
                 self.model_subtrees_memoi[(l.source, l.attachment)] = subtree
         comm.communicate("Subtree derivations complete.")
-
 
     def solve(self):
         self._determine_final_rotations()
@@ -52,7 +51,6 @@ class Model:
         self._translate_all()
 
         return self.parts
-
 
     def contain_in(self, container: BB):
         """
@@ -79,11 +77,9 @@ class Model:
         for k in self.parts.keys():
             self.parts[k].extent = self._translate_part(self.parts[k])
 
-
     @staticmethod
     def _translate_part(part: Part) -> BB:
         return part.extent.translate(part.translation)
-
 
     def _determine_adjacency_translations(self):
         for l in self.links:
@@ -91,7 +87,6 @@ class Model:
                 t = self._adjacency_translation(l.source, l.attachment, l.adjacency)
                 for n in self.model_subtrees_memoi[(l.source, l.attachment)]:
                     self.parts[n].translation += t
-    
 
     def _determine_property_translations(self):
         for l in self.links:
@@ -102,10 +97,9 @@ class Model:
                         for n in self.model_subtrees_memoi[(l.source, l.attachment)]:
                             self.parts[n].translation += t
 
-
     def _adjacency_translation(self, source_id: int, attachment_id: int, adjacency: Cardinals, relative_adjacency=True):
         # The links are relative, so need to take the source's rotation into account.
-        translation = Coord(0,0,0)
+        translation = Coord(0, 0, 0)
         source = self.parts[source_id]
         attachment = self.parts[attachment_id]
 
@@ -126,12 +120,11 @@ class Model:
 
         elif adjacency == Cardinals.TOP:
             translation.z = source.extent.maxz - attachment.extent.minz
-        
+
         elif adjacency == Cardinals.BOTTOM:
             translation.z = source.extent.minz - attachment.extent.maxz
-        
-        return translation
 
+        return translation
 
     def _determine_final_rotations(self):
         # Determine final rotations of all parts.
@@ -159,24 +152,23 @@ class Model:
 
                 if rotation != 0:
                     # Rotation needs to be propagated to all parts attached to the attachment.
-                    comm.communicate(f"Propagating rotation to attachments subtree {subtree_nodes} of part {l.attachment}", V.HIGH)
+                    comm.communicate(
+                        f"Propagating rotation to attachments subtree {subtree_nodes} of part {l.attachment}", V.HIGH)
                     for n in subtree_nodes:
                         self.parts[n].rotation += rotation
-
 
     def _rotate_all(self):
         for k in self.parts.keys():
             self.parts[k].extent = self.rotate_part_bb(self.parts[k].extent, self.parts[k].rotation, self.parts[k].up)
-        
 
-    def rotate_part_bb(self, bb: BB, rotation: int, up: Coord, origin: Coord = Coord(0,0,0)) -> BB:
+    def rotate_part_bb(self, bb: BB, rotation: int, up: Coord, origin: Coord = Coord(0, 0, 0)) -> BB:
         """
         Currently done in 2D. Needs extension for 3D later
         """
         # rotation: [[cos a, -sin a], [sin a, cos a]]  [x, y]
         # rotated vector: (x * cos a - y * sin a), (x * sin a + y * cos a)
         rot_matrix = self._rotation_matrix(rotation, up.to_dimension())
-        
+
         min_coord = (bb.min_coord() - origin).to_numpy_array()
         max_coord = (bb.max_coord() - origin).to_numpy_array()
 
@@ -191,9 +183,8 @@ class Model:
             min(min_rot_coord[2], max_rot_coord[2]),
             max(min_rot_coord[2], max_rot_coord[2]),
         ).translate(origin)
-        
-        return rot_bb
 
+        return rot_bb
 
     def _rotation_matrix(self, rotation: int, axis: Dimensions):
         rad = math.radians(rotation)
@@ -201,25 +192,24 @@ class Model:
         sina = math.sin(rad)
         if axis == Dimensions.X:
             return np.asarray([
-                [1,0,0],
-                [0,cosa,-sina],
-                [0,sina,cosa]
+                [1, 0, 0],
+                [0, cosa, -sina],
+                [0, sina, cosa]
             ])
         elif axis == Dimensions.Y:
             return np.asarray([
-                [cosa,0,sina],
-                [0,1,0],
-                [-sina,0,cosa]
+                [cosa, 0, sina],
+                [0, 1, 0],
+                [-sina, 0, cosa]
             ])
         elif axis == Dimensions.Z:
             return np.asarray([
-                [cosa,-sina,0],
-                [sina,cosa,0],
-                [0,0,1],
+                [cosa, -sina, 0],
+                [sina, cosa, 0],
+                [0, 0, 1],
             ])
         else:
-            return np.zeros((3,3))
-
+            return np.zeros((3, 3))
 
     def _center_translation(self, source_id: int, attachment_id: int, dimension: Dimensions) -> Coord:
         """
@@ -240,5 +230,5 @@ class Model:
             return Coord(diff_center.x, 0)
         elif dimension == Dimensions.Y:
             return Coord(0, diff_center.y)
-        
-        return Coord(0,0,0)
+
+        return Coord(0, 0, 0)
