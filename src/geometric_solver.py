@@ -22,7 +22,6 @@ class GeometricSolver:
 
         # If the current node has children.
         if children:
-
             # Determine collapse order of children.
             comm.communicate(f"Determining sibling processing order...")
 

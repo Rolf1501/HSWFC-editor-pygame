@@ -2,25 +2,31 @@ from dataclasses import dataclass, field
 from util_data import Cardinals, Dimensions, Operations
 import networkx as nx
 from collections import namedtuple
+
+
 @dataclass
 class Properties:
     operation: Operations = field()
     dimension: Dimensions = field(default=Dimensions.X)
+
 
 @dataclass
 class Adjacency:
     frm: Cardinals = field()
     to: Cardinals = field()
 
+
 MHNodeID = int
 
-MHNode = namedtuple("MHNode", ["node_id","name"])
+MHNode = namedtuple("MHNode", ["node_id", "name"])
+
+
 # @dataclass()
 # class MHNode:
 #     name: str
 #     node_id: MHNodeID
-    # children: set[int] = field(default_factory={}) # direct children
-    # parent: MHNodeID = field(default=-1) # direct parent
+# children: set[int] = field(default_factory={}) # direct children
+# parent: MHNodeID = field(default=-1) # direct parent
 
 
 @dataclass()
@@ -33,10 +39,11 @@ class MHEdge:
 class MHLink:
     source: MHNodeID = field()
     attachment: MHNodeID = field()
-    adjacency: Cardinals # Specifies which face of this should meet which face of that.
+    adjacency: Cardinals  # Specifies which face of this should meet which face of that.
     # rotation: Coord = field(default_factory=Coord(0,0,0))
     properties: list[Properties] = field(default_factory=[])
     relative_adjacency: bool = field(default=True)
+
 
 class MHTree(nx.DiGraph):
     # nodes: dict[MHNodeID, MHNode] = field(default_factory={})
@@ -52,7 +59,7 @@ class MHTree(nx.DiGraph):
     #     return self.pred[node] if self.has_node(node) else None
     # def add_node(self, node: MHNode):
     #     self.nodes[node.node_id] = node
-    
+
     # def add_nodes(self, nodes: list[MHNode]):
     #     for node in nodes:
     #         self.add_node(node)
@@ -76,9 +83,9 @@ class MHTree(nx.DiGraph):
     #     for edge in self.edges:
     #         assert (edge.frm in self.nodes and edge.to in self.nodes)
     #             # raise Exception(f"Nodes {edge.frm} and {edge.to} should both exist.")
-            
+
     #         from_node = self.nodes[edge.frm]
     #         from_node.children.add(edge.to)
-            
+
     #         to_node = self.nodes[edge.to]
     #         to_node.parent = edge.frm

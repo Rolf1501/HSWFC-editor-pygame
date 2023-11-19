@@ -22,3 +22,10 @@ class Dimensions(Enum):
 
 MAX = 9999999
 MIN = -MAX
+
+def cardinal_to_dimension(card: Cardinals):
+    if card == Cardinals.TOP or card == Cardinals.BOTTOM:
+        return Dimensions.Y
+    elif card == Cardinals.NORTH or card == Cardinals.SOUTH:
+        return Dimensions.Z
+    else return Dimensions.X
