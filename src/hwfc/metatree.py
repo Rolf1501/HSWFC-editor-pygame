@@ -134,7 +134,7 @@ class MetaLink:
         return f"{self.frm.name}-->{self.to.name}"
 
 @dataclass(frozen=True)
-class MetaTreeBuilder():
+class MetaTreeBuilder:
     """
     This class is responsible for putting a tree together from MetaNodes and MetaLinks. It also holds some global information,
     such as: a list of all the nodes, a list of all the tiles, a list of all the links, and all the metamasks.

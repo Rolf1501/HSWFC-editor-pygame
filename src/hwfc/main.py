@@ -41,8 +41,8 @@ TOOLBAR_SIZE = 64  # Size of the bottom bar, with the swatches for the tiles
 
 # Algorithm config
 np.random.seed(1337)  # Fixing the seed ensures same generation patterns, good for debug
-# tileset_path = Path().cwd() / "tilesets" / "tileset-dag-paper-final-adv" # The tileset to load; should point to the root folder
-tileset_path = Path().cwd() / "tilesets" / "tileset-dag-geometric-test" # The tileset to load; should point to the root folder
+tileset_path = Path().cwd() / "tilesets" / "tileset-dag-paper-final-adv" # The tileset to load; should point to the root folder
+# tileset_path = Path().cwd() / "tilesets" / "tileset-dag-geometric-test" # The tileset to load; should point to the root folder
 
 
 

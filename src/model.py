@@ -60,7 +60,7 @@ class Model:
         """
         bb: BB = BB(MAX, MIN, MAX, MIN, auto_adjust=False)
         for p in self.parts:
-            part_bb = self.parts[p].bb
+            part_bb = self.parts[p].extent
             bb.minx = min(part_bb.minx, bb.minx)
             bb.maxx = max(part_bb.maxx, bb.maxx)
             bb.miny = min(part_bb.miny, bb.miny)
@@ -73,16 +73,16 @@ class Model:
         else:
             translation = container.center() - bb.center()
         for k in self.parts:
-            self.parts[k].bb.translate(translation)
+            self.parts[k].extent.translate(translation)
 
     def _translate_all(self):
         for k in self.parts.keys():
-            self.parts[k].bb = self._translate_part(self.parts[k])
+            self.parts[k].extent = self._translate_part(self.parts[k])
 
 
     @staticmethod
     def _translate_part(part: Part) -> BB:
-        return part.bb.translate(part.translation)
+        return part.extent.translate(part.translation)
 
 
     def _determine_adjacency_translations(self):
@@ -113,22 +113,22 @@ class Model:
             adjacency = Cardinals((adjacency.value + source.absolute_north().value) % len(Cardinals))
 
         if adjacency == Cardinals.EAST:
-            translation.x = source.bb.maxx - attachment.bb.minx
+            translation.x = source.extent.maxx - attachment.extent.minx
 
         elif adjacency == Cardinals.WEST:
-            translation.x = source.bb.minx - attachment.bb.maxx
+            translation.x = source.extent.minx - attachment.extent.maxx
 
         elif adjacency == Cardinals.NORTH:
-            translation.y = source.bb.miny - attachment.bb.maxy
+            translation.y = source.extent.miny - attachment.extent.maxy
 
         elif adjacency == Cardinals.SOUTH:
-            translation.y = source.bb.maxy - attachment.bb.miny
+            translation.y = source.extent.maxy - attachment.extent.miny
 
         elif adjacency == Cardinals.TOP:
-            translation.z = source.bb.maxz - attachment.bb.minz
+            translation.z = source.extent.maxz - attachment.extent.minz
         
         elif adjacency == Cardinals.BOTTOM:
-            translation.z = source.bb.minz - attachment.bb.maxz
+            translation.z = source.extent.minz - attachment.extent.maxz
         
         return translation
 
@@ -166,7 +166,7 @@ class Model:
 
     def _rotate_all(self):
         for k in self.parts.keys():
-            self.parts[k].bb = self.rotate_part_bb(self.parts[k].bb, self.parts[k].rotation, self.parts[k].up)
+            self.parts[k].extent = self.rotate_part_bb(self.parts[k].extent, self.parts[k].rotation, self.parts[k].up)
         
 
     def rotate_part_bb(self, bb: BB, rotation: int, up: Coord, origin: Coord = Coord(0,0,0)) -> BB:
@@ -228,8 +228,8 @@ class Model:
         source = self.parts[source_id]
         attachment = self.parts[attachment_id]
 
-        source_center = source.bb.center()
-        attachment_center = attachment.bb.center()
+        source_center = source.extent.center()
+        attachment_center = attachment.extent.center()
         diff_center = source_center - attachment_center
         # In case the part has been rotated such that the local axes do not align with the global axes, switch the dimension.
         if source.absolute_north() == Cardinals.EAST or source.absolute_north() == Cardinals.WEST:

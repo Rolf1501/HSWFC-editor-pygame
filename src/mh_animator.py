@@ -1,4 +1,3 @@
-
 # =====================================
 # = PYGAME PROGRAM
 # =====================================
@@ -21,62 +20,37 @@ import open3d as o3d
 
 comm = Communicator()
 
-# pygame.init()
-
 select_mode = False
 
-WINDOW_SIZE = [800,600]
-DRAW_SURF_SIZE = (760,560)
-# font = pygame.font.SysFont('segoeuisymbol',20,16)
-
-# clock = pygame.time.Clock()  # The clock is needed to regulate the update loop such that we can process input between the frames, see pygame doc
-# screen = pygame.display.set_mode((WINDOW_SIZE[0], WINDOW_SIZE[1]))
-# draw_surface = pygame.Surface(DRAW_SURF_SIZE,flags=pygame.HWSURFACE)
+WINDOW_SIZE = [800, 600]
+DRAW_SURF_SIZE = (760, 560)
 
 drawing = False
 running = True
 
-start = (0,0)
-end = (0,0)
-# screen.fill("white")
-# draw_surface.fill("white")
-# draw_surface_offset = (0,0)
+start = (0, 0)
+end = (0, 0)
 
 Colour = namedtuple("Colour", ["r", "g", "b"])
-
-
-# class DrawJob:
-#     def __init__(self, rect: pygame.Rect, colour: Colour) -> None:
-#         self.rect = rect
-#         self.colour = colour
-
-# def BB_to_rect(bb: BB):
-#     return pygame.Rect(bb.minx, bb.miny, bb.width(), bb.height())
-
-# def clear_drawing():
-#     draw_surface.fill("white")
-
-# drawing_queue = Queue[DrawJob]()
-
 
 # TOY EXAMPLE
 
 # Collection of all parts. 
 # Orientations are implicit. All initially point towards North.
 parts: dict[int, Part] = {
-    -1: Part(BB(0,1,0,1), name="Root"),
-    0: Part(BB(0,500,0,200), name="Car frame"),
-    9: Part(BB(0,500,0,150), name="Frame"),
+    -1: Part(BB(0, 1, 0, 1), name="Root"),
+    0: Part(BB(0, 500, 0, 200), name="Car frame"),
+    9: Part(BB(0, 500, 0, 150), name="Frame"),
 
-    1: Part(BB(0,300,0,75), name="Front frame"),
-    2: Part(BB(0,250,0,50), name="Front axle"),
-    3: Part(BB(0,75,0,25), name="Front wheel"),
-    4: Part(BB(0,75,0,25), name="Front wheel"),
+    1: Part(BB(0, 300, 0, 75), name="Front frame"),
+    2: Part(BB(0, 250, 0, 50), name="Front axle"),
+    3: Part(BB(0, 75, 0, 25), name="Front wheel"),
+    4: Part(BB(0, 75, 0, 25), name="Front wheel"),
 
-    5: Part(BB(0,350,0,85), name="Rear frame"),
-    6: Part(BB(0,300,0,50), name="Rear axle"),
-    7: Part(BB(0,85,0,25), name="Rear wheel"),
-    8: Part(BB(0,85,0,25), name="Rear wheel"),
+    5: Part(BB(0, 350, 0, 85), name="Rear frame"),
+    6: Part(BB(0, 300, 0, 50), name="Rear axle"),
+    7: Part(BB(0, 85, 0, 25), name="Rear wheel"),
+    8: Part(BB(0, 85, 0, 25), name="Rear wheel"),
 }
 
 original_parts = deepcopy(parts)
@@ -97,14 +71,20 @@ edges = [
 # Links specifying the relations between parts. Order independent.
 # Each link follows: (source, attachment, side of source the attachment should face, [props])
 links = [
-    mht.MHLink(0, 1, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
-    mht.MHLink(0, 5, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(0, 1, mht.Cardinals.WEST,
+               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(0, 5, mht.Cardinals.EAST,
+               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
 
-    mht.MHLink(2, 3, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
-    mht.MHLink(2, 4, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(2, 3, mht.Cardinals.EAST,
+               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(2, 4, mht.Cardinals.WEST,
+               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
 
-    mht.MHLink(6, 7, mht.Cardinals.EAST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
-    mht.MHLink(6, 8, mht.Cardinals.WEST, [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(6, 7, mht.Cardinals.EAST,
+               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+    mht.MHLink(6, 8, mht.Cardinals.WEST,
+               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
 ]
 
 full_model_tree = ModelTree.from_parts(parts, links)
@@ -117,29 +97,30 @@ def fit_canvas(parts: dict[int, Part]):
     miny = MAX
     minz = MAX
     for k in fit_parts:
-        if fit_parts[k].bb.minx < minx:
-            minx = fit_parts[k].bb.minx
-        if fit_parts[k].bb.miny < miny:
-            miny = fit_parts[k].bb.miny
-        if fit_parts[k].bb.minz < minz:
-            minz = fit_parts[k].bb.minz
+        if fit_parts[k].extent.minx < minx:
+            minx = fit_parts[k].extent.minx
+        if fit_parts[k].extent.miny < miny:
+            miny = fit_parts[k].extent.miny
+        if fit_parts[k].extent.minz < minz:
+            minz = fit_parts[k].extent.minz
 
     translation = Coord(-minx, -miny, -minz)
     for k in fit_parts:
-        fit_parts[k].bb.translate(translation)
-    
+        fit_parts[k].extent.translate(translation)
+
     return fit_parts
+
 
 # Convert cardinals to canvas specific coordinates.
 def cardinal_to_normal_coord(card: Cardinals) -> Coord:
     if card == Cardinals.NORTH:
-        return Coord(0,-1)
+        return Coord(0, -1)
     elif card == Cardinals.EAST:
-        return Coord(1,0)
+        return Coord(1, 0)
     elif card == Cardinals.SOUTH:
-        return Coord(0,1)
+        return Coord(0, 1)
     elif card == Cardinals.WEST:
-        return Coord(-1,0)
+        return Coord(-1, 0)
     else:
         raise NotImplementedError(f"Cardinal must be valid. Got: {card}")
 
@@ -153,13 +134,13 @@ model_hierarchy_tree = mht.MHTree(nodes, edges)
 Iteration = namedtuple("Iteration", ["current_node_id", "model_tree", "parent_node_id"])
 collapse_stack: list[Iteration] = [Iteration(-1, None, None)]
 
-
 ProcessState = namedtuple("ProcessState", ["node_id", "parts", "processed"])
 processed = {k: False for k in nodes}
 process_log: list[ProcessState] = []
 
 
-def process(node_id: int, parts: dict[int, Part], mht: mht.MHTree, processed: dict[int, bool], full_model_tree: ModelTree):
+def process(node_id: int, parts: dict[int, Part], mht: mht.MHTree, processed: dict[int, bool],
+            full_model_tree: ModelTree):
     process_log.append(ProcessState(node_id, parts, processed))
     comm.communicate("Process log:")
     map(lambda pl: comm.communicate(pl), process_log)
@@ -167,7 +148,7 @@ def process(node_id: int, parts: dict[int, Part], mht: mht.MHTree, processed: di
     part_info = (node_id, part.name)
     comm.communicate(f"Currently collapsing {part_info}...")
     children = list(mht.successors(node_id))
-    
+
     # If the current node has children.
     if children:
 
@@ -180,16 +161,17 @@ def process(node_id: int, parts: dict[int, Part], mht: mht.MHTree, processed: di
         # Processing order corresponds to the dependencies of the siblings.
         process_order = model_subtree.get_sibling_order()
         if process_order:
-            comm.communicate(f"Found sibling order: {list(map(lambda sib: (sib, parts[sib].name), process_order))}", V.HIGH)
+            comm.communicate(f"Found sibling order: {list(map(lambda sib: (sib, parts[sib].name), process_order))}",
+                             V.HIGH)
         else:
             comm.communicate(f"No more siblings found for {part_info}", V.HIGH)
-        
+
         # Arrange all children.
         # Make sure children inherit translation and rotation from parent.
         for k in children:
             parts[k].rotation += parts[node_id].rotation
             parts[k].translation += parts[node_id].translation
-        
+
         # Only include parts and links of the children.
         model = Model(
             {k: parts[k] for k in children},
@@ -197,7 +179,7 @@ def process(node_id: int, parts: dict[int, Part], mht: mht.MHTree, processed: di
             model_subtree)
 
         model.solve()
-        model.contain_in(part.bb)
+        model.contain_in(part.extent)
 
         # Process each child following the sibling order.
         for node in process_order:
@@ -206,7 +188,7 @@ def process(node_id: int, parts: dict[int, Part], mht: mht.MHTree, processed: di
         # TODO: after all children have been processed, assemble here.
         # This is also the place where the tight fits can be made.
         # Make use of properties stored in the link between the two parts.
-            # E.g. when aligning with center: move attachment to source along centerline until overlap occurs.
+        # E.g. when aligning with center: move attachment to source along centerline until overlap occurs.
         processed[node_id] = True
 
         comm.communicate(f"All children of node {part_info} completed. Fitting parts...")
@@ -234,8 +216,7 @@ def process(node_id: int, parts: dict[int, Part], mht: mht.MHTree, processed: di
 
 start_next = True
 automatic = False
-backtracking = False # True if the leaves have been reached.
-
+backtracking = False  # True if the leaves have been reached.
 
 process(-1, parts, model_hierarchy_tree, processed, full_model_tree)
 vis = o3d.visualization.VisualizerWithKeyCallback()
@@ -243,13 +224,13 @@ fit_parts = fit_canvas(parts)
 
 meshes = []
 for p in fit_parts.values():
-    mesh_box = o3d.geometry.TriangleMesh.create_box(p.bb.width(), p.bb.height(), p.bb.depth())
+    mesh_box = o3d.geometry.TriangleMesh.create_box(p.extent.width(), p.extent.height(), p.extent.depth())
     mesh_box.paint_uniform_color([0.9, 0.1, 0.1])
     mesh_box.compute_vertex_normals()
-    mesh_box.translate(p.bb.min_coord().to_tuple())
+    mesh_box.translate(p.extent.min_coord().to_tuple())
     meshes.append(mesh_box)
 
-vis.create_window(window_name="test",width=WINDOW_SIZE[0],height=WINDOW_SIZE[1])
+vis.create_window(window_name="test", width=WINDOW_SIZE[0], height=WINDOW_SIZE[1])
 # map(lambda part: vis.add_geometry(part), meshes)
 for m in meshes:
     vis.add_geometry(m)
@@ -296,7 +277,7 @@ vis.run()
 #             if event.key == pygame.K_v:
 #                 comm.cycle_verbosity(True)
 #                 comm.communicate(f"Set verbosity level to {comm.verbosity}")
-    
+
 #     while not drawing_queue.empty():
 #         job = drawing_queue.get()
 #         pygame.draw.rect(draw_surface, job.colour, job.rect)
