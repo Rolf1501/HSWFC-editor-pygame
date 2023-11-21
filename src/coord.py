@@ -1,5 +1,5 @@
 import numpy as np
-from util_data import Dimensions as D
+
 class Coord:
     def __init__(self,x,y,z=0):
         self.x = x
@@ -42,11 +42,3 @@ class Coord:
     
     def abs_diff(self, other):
         return Coord(abs(self.x - other.x), abs(self.y - other.y), abs(self.z - other.z))
-    
-    def to_dimension(self):
-        if self.x > 0:
-            return D.X
-        elif self.y > 0:
-            return D.Y
-        elif self.z > 0:
-            return D.Z

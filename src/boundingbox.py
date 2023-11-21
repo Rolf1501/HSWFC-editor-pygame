@@ -1,7 +1,5 @@
 from dataclasses import dataclass, field
 from coord import Coord
-from util_data import Dimensions as D
-
 
 @dataclass()
 class BoundingBox:
@@ -13,6 +11,10 @@ class BoundingBox:
     maxz: int = field(default=1)
     auto_adjust: bool = field(
         default=True)  # If True, automatically sets the bounds such that min is always less than max.
+
+    @classmethod
+    def from_whd(cls, width: int, height: int, depth: int):
+        return BoundingBox(0, width, 0, height, 0, depth)
 
     def __post_init__(self):
         if self.auto_adjust:
@@ -72,6 +74,9 @@ class BoundingBox:
     def orient_to_other_center(self, other):
         translation = other.center() - self.center()
         self.translate(translation)
+
+    def extent_sum(self, other):
+        return [self.width() + other.width(), self.height() + other.height(), self.depth() + other.depth()]
 
     def min_coord(self) -> Coord:
         return Coord(self.minx, self.miny, self.minz)

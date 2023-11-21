@@ -13,6 +13,11 @@ from communicator import Communicator, Verbosity as V
 from model_tree import ModelTree
 from copy import deepcopy
 from geometric_solver import GeometricSolver as GS
+from adjacencies import Adjacency, AdjacencyMatrix
+from wfc import WFC
+from adjacencies import Relation as R
+from offsets import Offset
+
 
 import open3d as o3d
 
@@ -29,29 +34,35 @@ running = True
 start = (0, 0)
 end = (0, 0)
 
-Colour = namedtuple("Colour", ["r", "g", "b"])
 
 # TOY EXAMPLE
 
 # Collection of all parts. 
 # Orientations are implicit. All initially point towards North.
+# parts: dict[int, Part] = {
+#     -1: Part(BB(0, 1, 0, 1, 0, 1), name="Root"),
+#     0: Part(BB(0, 500, 0, 1, 0, 200), name="A", colour=Colour(1,0,0)),
+#     1: Part(BB(0, 600, 0, 1, 0, 100), name="B", colour=Colour(0,1,0)),
+#     2: Part(BB(0, 600, 0, 1, 0, 100), name="C", colour=Colour(0,0,1)),
+# }
+
 parts: dict[int, Part] = {
-    -1: Part(BB(0, 1, 0, 1), name="Root"),
-    0: Part(BB(0, 500, 0, 200), name="Car frame"),
-    9: Part(BB(0, 500, 0, 150), name="Frame"),
+    -1: Part(BB(0, 1, 0, 1, 0, 1), name="Root", colour=Colour(0,0,0)),
+    0: Part(BB(0, 500, 0, 1, 0, 200), name="Car frame", colour=Colour(0,0,1)),
+    9: Part(BB(0, 500, 0, 1, 0, 150), name="Frame", colour=Colour(0,0,1)),
 
-    1: Part(BB(0, 300, 0, 75), name="Front frame"),
-    2: Part(BB(0, 250, 0, 50), name="Front axle"),
-    3: Part(BB(0, 75, 0, 25), name="Front wheel"),
-    4: Part(BB(0, 75, 0, 25), name="Front wheel"),
+    1: Part(BB(0, 300, 0, 1, 0, 75), name="Front frame", colour=Colour(0,1,1)),
+    2: Part(BB(0, 250, 0, 1, 0, 50), name="Front axle", colour=Colour(.5,0,1)),
+    3: Part(BB(0, 75, 0, 1, 0, 25), name="Front wheel", colour=Colour(1,.5,0)),
+    4: Part(BB(0, 75, 0, 1, 0, 25), name="Front wheel", colour=Colour(1,.5,0)),
 
-    5: Part(BB(0, 350, 0, 85), name="Rear frame"),
-    6: Part(BB(0, 300, 0, 50), name="Rear axle"),
-    7: Part(BB(0, 85, 0, 25), name="Rear wheel"),
-    8: Part(BB(0, 85, 0, 25), name="Rear wheel"),
+    5: Part(BB(0, 350, 0, 1, 0, 85), name="Rear frame", colour=Colour(0,0,1)),
+    6: Part(BB(0, 300, 0, 1, 0, 50), name="Rear axle", colour=Colour(0,0,1)),
+    7: Part(BB(0, 85, 0, 1, 0, 25), name="Rear wheel", colour=Colour(0,0,1)),
+    8: Part(BB(0, 85, 0, 1, 0, 25), name="Rear wheel", colour=Colour(0,0,1)),
 }
 
-original_parts = deepcopy(parts)
+# original_parts = deepcopy(parts)
 # Edges determine the hierarchy such that for each edge (u, v), u consists of v.
 edges = [
     mht.MHEdge(-1, 0),
@@ -68,21 +79,30 @@ edges = [
 
 # Links specifying the relations between parts. Order independent.
 # Each link follows: (source, attachment, side of source the attachment should face, [props])
+
+# links = [
+#     mht.MHLink(0, 1, mht.Cardinals.WEST,
+#                [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.X)]),
+#     mht.MHLink(0, 2, mht.Cardinals.EAST,
+#                [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.X)]),
+# ]
+
+
 links = [
     mht.MHLink(0, 1, mht.Cardinals.WEST,
-               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Z)]),
     mht.MHLink(0, 5, mht.Cardinals.EAST,
-               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Z)]),
 
     mht.MHLink(2, 3, mht.Cardinals.EAST,
-               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Z)]),
     mht.MHLink(2, 4, mht.Cardinals.WEST,
-               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Z)]),
 
     mht.MHLink(6, 7, mht.Cardinals.EAST,
-               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Z)]),
     mht.MHLink(6, 8, mht.Cardinals.WEST,
-               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Y)]),
+               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Z)]),
 ]
 
 full_model_tree = ModelTree.from_parts(parts, links)
@@ -154,7 +174,7 @@ fit_parts = fit_canvas(parts)
 meshes = []
 for p in fit_parts.values():
     mesh_box = o3d.geometry.TriangleMesh.create_box(p.extent.width(), p.extent.height(), p.extent.depth())
-    mesh_box.paint_uniform_color([0.9, 0.1, 0.1])
+    mesh_box.paint_uniform_color([*p.colour])
     mesh_box.compute_vertex_normals()
     mesh_box.translate(p.extent.min_coord().to_tuple())
     meshes.append(mesh_box)
@@ -164,6 +184,24 @@ vis.create_window(window_name="test", width=WINDOW_SIZE[0], height=WINDOW_SIZE[1
 for m in meshes:
     vis.add_geometry(m)
 vis.run()
+
+
+terminals = {
+    0: Part(BB.from_whd(1,1,1), name="void"),
+    1: Part(BB.from_whd(4,1,2), name="4x2")
+
+}
+
+adjacencies = [
+    Adjacency(1, {R(1, 0.5), R(0, 0.5)}, Offset(1,0,0), symmetric=True),
+    Adjacency(1, {R(1, 1)}, Offset(-1,0,0), symmetric=True),
+    Adjacency(1, {R(1, 0.8), R(0, 0.2)}, Offset(0,1,0), symmetric=True),
+    Adjacency(1, {R(1, 1)}, Offset(0,-1,0), symmetric=True),
+]
+
+ADJ = AdjacencyMatrix(terminals.keys(), adjacencies)
+
+print(ADJ)
 # while running:
 #     if start_next | automatic:
 #         can_continue = process(-1, parts, model_hierarchy_tree, processed, full_model_tree)

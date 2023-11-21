@@ -8,7 +8,7 @@ from boundingbox import BoundingBox as BB
 import networkx as nx
 from part import Part
 from communicator import Communicator, Verbosity as V
-from util_data import MIN, MAX
+from util_data import MIN, MAX, tuple_to_numpy
 import numpy as np
 
 comm = Communicator()
@@ -45,7 +45,7 @@ class Model:
     def solve(self):
         self._determine_final_rotations()
         self._rotate_all()
-
+        print(self.parts)
         self._determine_adjacency_translations()
         self._determine_property_translations()
         self._translate_all()
@@ -56,20 +56,20 @@ class Model:
         """
         Tries to fit all parts inside the container.
         """
-        bb: BB = BB(MAX, MIN, MAX, MIN, auto_adjust=False)
+        bb: BB = BB(MAX, MIN, MAX, MIN, MAX, MIN, auto_adjust=False)
         for p in self.parts:
             part_bb = self.parts[p].extent
             bb.minx = min(part_bb.minx, bb.minx)
             bb.maxx = max(part_bb.maxx, bb.maxx)
             bb.miny = min(part_bb.miny, bb.miny)
             bb.maxy = max(part_bb.maxy, bb.maxy)
-            bb.minz = max(part_bb.minz, bb.minz)
+            bb.minz = min(part_bb.minz, bb.minz)
             bb.maxz = max(part_bb.maxz, bb.maxz)
 
-        if container.can_contain(bb):
-            translation = container.min_coord() - bb.min_coord()
-        else:
-            translation = container.center() - bb.center()
+        # if container.can_contain(bb):
+        #     translation = container.min_coord() - bb.min_coord()
+        # else:
+        translation = container.center() - bb.center()
         for k in self.parts:
             self.parts[k].extent.translate(translation)
 
@@ -98,31 +98,21 @@ class Model:
                             self.parts[n].translation += t
 
     def _adjacency_translation(self, source_id: int, attachment_id: int, adjacency: Cardinals, relative_adjacency=True):
+        s_extent = self.parts[source_id].extent
+        a_extent = self.parts[attachment_id].extent
+
+        translation = s_extent.center() - a_extent.center()
+        extent_avg = 0.5 * np.asarray(s_extent.extent_sum(a_extent))
+
+        if attachment_id == 3 or attachment_id == 4:
+            print("HERE")
         # The links are relative, so need to take the source's rotation into account.
-        translation = Coord(0, 0, 0)
-        source = self.parts[source_id]
-        attachment = self.parts[attachment_id]
-
         if relative_adjacency:
-            adjacency = Cardinals((adjacency.value + source.absolute_north().value) % len(Cardinals))
+            adjacency = self.parts[source_id].to_absolute_cardinal(adjacency)
 
-        if adjacency == Cardinals.EAST:
-            translation.x = source.extent.maxx - attachment.extent.minx
-
-        elif adjacency == Cardinals.WEST:
-            translation.x = source.extent.minx - attachment.extent.maxx
-
-        elif adjacency == Cardinals.NORTH:
-            translation.y = source.extent.miny - attachment.extent.maxy
-
-        elif adjacency == Cardinals.SOUTH:
-            translation.y = source.extent.maxy - attachment.extent.miny
-
-        elif adjacency == Cardinals.TOP:
-            translation.z = source.extent.maxz - attachment.extent.minz
-
-        elif adjacency == Cardinals.BOTTOM:
-            translation.z = source.extent.minz - attachment.extent.maxz
+        # Since the cardinals' values are tuples, they can be used to mask the translation such that only translations in the intended direction are added.
+        masked_translation = extent_avg * tuple_to_numpy(adjacency.value)
+        translation += Coord(*masked_translation)
 
         return translation
 
@@ -137,7 +127,7 @@ class Model:
             rotation_diff = abs(source.rotation - attachment.rotation)
 
             # If the up directions do not match.
-            if source.up.to_numpy_array().dot(attachment.up.to_numpy_array()) <= 0:
+            if tuple_to_numpy(source.up.value).dot(tuple_to_numpy(attachment.up.value)) <= 0:
                 attachment.up = source.up
 
             for p in l.properties:
@@ -161,13 +151,10 @@ class Model:
         for k in self.parts.keys():
             self.parts[k].extent = self.rotate_part_bb(self.parts[k].extent, self.parts[k].rotation, self.parts[k].up)
 
-    def rotate_part_bb(self, bb: BB, rotation: int, up: Coord, origin: Coord = Coord(0, 0, 0)) -> BB:
-        """
-        Currently done in 2D. Needs extension for 3D later
-        """
+    def rotate_part_bb(self, bb: BB, rotation: int, up: Cardinals, origin: Coord = Coord(0, 0, 0)) -> BB:
         # rotation: [[cos a, -sin a], [sin a, cos a]]  [x, y]
         # rotated vector: (x * cos a - y * sin a), (x * sin a + y * cos a)
-        rot_matrix = self._rotation_matrix(rotation, up.to_dimension())
+        rot_matrix = self._rotation_matrix(rotation, Cardinals.cardinal_to_dimension(up))
 
         min_coord = (bb.min_coord() - origin).to_numpy_array()
         max_coord = (bb.max_coord() - origin).to_numpy_array()
@@ -185,7 +172,7 @@ class Model:
         ).translate(origin)
 
         return rot_bb
-
+    
     def _rotation_matrix(self, rotation: int, axis: Dimensions):
         rad = math.radians(rotation)
         cosa = math.cos(rad)
@@ -222,9 +209,9 @@ class Model:
         attachment_center = attachment.extent.center()
         diff_center = source_center - attachment_center
         # In case the part has been rotated such that the local axes do not align with the global axes, switch the dimension.
-        if source.absolute_north() == Cardinals.EAST or source.absolute_north() == Cardinals.WEST:
+        if source.orientation == Cardinals.EAST or source.orientation == Cardinals.WEST:
             dimension = Dimensions.X if dimension == Dimensions.Y else Dimensions.Y
-        elif source.absolute_north() == Cardinals.TOP or source.absolute_north() == Cardinals.BOTTOM:
+        elif source.orientation == Cardinals.TOP or source.orientation == Cardinals.BOTTOM:
             dimension = Dimensions.Z if dimension == Dimensions.Y else Dimensions.Y
         if dimension == Dimensions.X:
             return Coord(diff_center.x, 0)
