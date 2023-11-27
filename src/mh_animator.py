@@ -1,8 +1,3 @@
-# =====================================
-# = PYGAME PROGRAM
-# =====================================
-# INIT pygame
-# import pygame
 from coord import Coord
 import model_hierarchy_tree as mht
 from boundingbox import BoundingBox as BB
@@ -14,10 +9,11 @@ from model_tree import ModelTree
 from copy import deepcopy
 from geometric_solver import GeometricSolver as GS
 from adjacencies import Adjacency, AdjacencyMatrix
-from wfc import WFC
+# from wfc import WFC
 from adjacencies import Relation as R
 from offsets import Offset
-
+import panda3d as p3d
+from direct.showbase.ShowBase import ShowBase
 
 import open3d as o3d
 
@@ -48,18 +44,18 @@ end = (0, 0)
 
 parts: dict[int, Part] = {
     -1: Part(BB(0, 1, 0, 1, 0, 1), name="Root", colour=Colour(0,0,0)),
-    0: Part(BB(0, 500, 0, 1, 0, 200), name="Car frame", colour=Colour(0,0,1)),
-    9: Part(BB(0, 500, 0, 1, 0, 150), name="Frame", colour=Colour(0,0,1)),
+    0: Part(BB(0, 500, 0, 10, 0, 200), name="Car frame", colour=Colour(0,0,0.5)),
+    9: Part(BB(0, 500, 0, 10, 0, 150), name="Frame", colour=Colour(0,0,1)),
 
-    1: Part(BB(0, 300, 0, 1, 0, 75), name="Front frame", colour=Colour(0,1,1)),
-    2: Part(BB(0, 250, 0, 1, 0, 50), name="Front axle", colour=Colour(.5,0,1)),
-    3: Part(BB(0, 75, 0, 1, 0, 25), name="Front wheel", colour=Colour(1,.5,0)),
-    4: Part(BB(0, 75, 0, 1, 0, 25), name="Front wheel", colour=Colour(1,.5,0)),
+    1: Part(BB(0, 300, 0, 75, 0, 75), name="Front frame", colour=Colour(0,1,1)),
+    2: Part(BB(0, 250, 0, 50, 0, 50), name="Front axle", colour=Colour(.5,0,1)),
+    3: Part(BB(0, 75, 0, 75, 0, 25), name="Front wheel", colour=Colour(1,.5,0)),
+    4: Part(BB(0, 75, 0, 75, 0, 25), name="Front wheel", colour=Colour(1,.5,0)),
 
-    5: Part(BB(0, 350, 0, 1, 0, 85), name="Rear frame", colour=Colour(0,0,1)),
-    6: Part(BB(0, 300, 0, 1, 0, 50), name="Rear axle", colour=Colour(0,0,1)),
-    7: Part(BB(0, 85, 0, 1, 0, 25), name="Rear wheel", colour=Colour(0,0,1)),
-    8: Part(BB(0, 85, 0, 1, 0, 25), name="Rear wheel", colour=Colour(0,0,1)),
+    5: Part(BB(0, 350, 0, 85, 0, 85), name="Rear frame", colour=Colour(1,0,1)),
+    6: Part(BB(0, 300, 0, 50, 0, 50), name="Rear axle", colour=Colour(1,0.5,0)),
+    7: Part(BB(0, 85, 0, 85, 0, 25), name="Rear wheel", colour=Colour(0,0.5,1)),
+    8: Part(BB(0, 85, 0, 85, 0, 25), name="Rear wheel", colour=Colour(0,0.5,1)),
 }
 
 # original_parts = deepcopy(parts)
@@ -186,22 +182,16 @@ for m in meshes:
 vis.run()
 
 
-terminals = {
-    0: Part(BB.from_whd(1,1,1), name="void"),
-    1: Part(BB.from_whd(4,1,2), name="4x2")
+# class Animator(ShowBase):
+#     def __init__(self):
+#         ShowBase.__init__(self)
 
-}
 
-adjacencies = [
-    Adjacency(1, {R(1, 0.5), R(0, 0.5)}, Offset(1,0,0), symmetric=True),
-    Adjacency(1, {R(1, 1)}, Offset(-1,0,0), symmetric=True),
-    Adjacency(1, {R(1, 0.8), R(0, 0.2)}, Offset(0,1,0), symmetric=True),
-    Adjacency(1, {R(1, 1)}, Offset(0,-1,0), symmetric=True),
-]
+# an = Animator()
+# an.run()
 
-ADJ = AdjacencyMatrix(terminals.keys(), adjacencies)
 
-print(ADJ)
+# print(ADJ)
 # while running:
 #     if start_next | automatic:
 #         can_continue = process(-1, parts, model_hierarchy_tree, processed, full_model_tree)

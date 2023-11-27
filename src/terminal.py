@@ -9,8 +9,8 @@ class Terminal:
     extent: BB  # BB with extent relative to grid units
     symmetry_axes: dict[D, set[D]]
     side_descriptor: SidesDescriptor
-    up: C = field(default_factory=C.TOP)
-    orientation: C = field(default_factory=C.NORTH)
+    up: C = field(default=C.TOP)
+    orientation: C = field(default=C.NORTH)
     unique_orientations: int = field(init=False)
     # TODO: add some properties, such as colour.
 

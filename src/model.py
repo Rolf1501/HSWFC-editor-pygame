@@ -104,8 +104,6 @@ class Model:
         translation = s_extent.center() - a_extent.center()
         extent_avg = 0.5 * np.asarray(s_extent.extent_sum(a_extent))
 
-        if attachment_id == 3 or attachment_id == 4:
-            print("HERE")
         # The links are relative, so need to take the source's rotation into account.
         if relative_adjacency:
             adjacency = self.parts[source_id].to_absolute_cardinal(adjacency)

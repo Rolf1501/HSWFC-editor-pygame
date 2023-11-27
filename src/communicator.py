@@ -3,6 +3,7 @@ class Verbosity(Enum):
     LOW = 2
     MID = 1
     HIGH = 0
+    SILENT = 3
 
 class Communicator(object):
     def __init__(self, verbosity: Verbosity=Verbosity.HIGH):
@@ -23,3 +24,6 @@ class Communicator(object):
     def cycle_verbosity(self, increase=True):
         diff = 1 if increase else -1
         self.set_verbosity(Verbosity((self.verbosity.value + diff) % len(Verbosity)))
+
+    def silence(self):
+        self.set_verbosity(Verbosity.SILENT)

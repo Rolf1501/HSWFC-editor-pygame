@@ -6,7 +6,7 @@ from util_data import tuple_to_numpy
 
 
 class Part:
-    def __init__(self, extent: BB, up: C = C.TOP, orientation: C = C.NORTH, rotation: int = 0, translation: Coord = Coord(0, 0),
+    def __init__(self, extent: BB, up: C = C.TOP, orientation: C = C.NORTH, rotation: int = 0, translation: Coord = Coord(0, 0, 0),
                  name="", colour: Colour = Colour(1,0,0)) -> None:
         self.extent = extent
         self.up = up
