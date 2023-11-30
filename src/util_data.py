@@ -41,6 +41,6 @@ def tuple_to_numpy(tuple):
     return np.asarray([*tuple])
 
 
-class Colour(namedtuple("Colour", ["r", "g", "b"])):
+class Colour(namedtuple("Colour", ["r", "g", "b", "a"])):
     def __init_subclass__(cls) -> None:
         return super().__init_subclass__()

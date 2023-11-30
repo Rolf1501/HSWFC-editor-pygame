@@ -4,16 +4,12 @@ from boundingbox import BoundingBox as BB
 from model import Part
 from util_data import *
 from collections import namedtuple
-from communicator import Communicator, Verbosity as V
+from communicator import Communicator
 from model_tree import ModelTree
 from copy import deepcopy
 from geometric_solver import GeometricSolver as GS
-from adjacencies import Adjacency, AdjacencyMatrix
 # from wfc import WFC
-from adjacencies import Relation as R
-from offsets import Offset
-import panda3d as p3d
-from direct.showbase.ShowBase import ShowBase
+
 
 import open3d as o3d
 
@@ -43,19 +39,19 @@ end = (0, 0)
 # }
 
 parts: dict[int, Part] = {
-    -1: Part(BB(0, 1, 0, 1, 0, 1), name="Root", colour=Colour(0,0,0)),
-    0: Part(BB(0, 500, 0, 10, 0, 200), name="Car frame", colour=Colour(0,0,0.5)),
-    9: Part(BB(0, 500, 0, 10, 0, 150), name="Frame", colour=Colour(0,0,1)),
+    -1: Part(BB(0, 1, 0, 1, 0, 1), name="Root", colour=Colour(0,0,0,1)),
+    0: Part(BB(0, 500, 0, 10, 0, 200), name="Car frame", colour=Colour(0,0,0.5,1)),
+    9: Part(BB(0, 500, 0, 10, 0, 150), name="Frame", colour=Colour(0,0,1,1)),
 
-    1: Part(BB(0, 300, 0, 75, 0, 75), name="Front frame", colour=Colour(0,1,1)),
-    2: Part(BB(0, 250, 0, 50, 0, 50), name="Front axle", colour=Colour(.5,0,1)),
-    3: Part(BB(0, 75, 0, 75, 0, 25), name="Front wheel", colour=Colour(1,.5,0)),
-    4: Part(BB(0, 75, 0, 75, 0, 25), name="Front wheel", colour=Colour(1,.5,0)),
+    1: Part(BB(0, 300, 0, 75, 0, 75), name="Front frame", colour=Colour(0,1,1,1)),
+    2: Part(BB(0, 250, 0, 50, 0, 50), name="Front axle", colour=Colour(.5,0,1,1)),
+    3: Part(BB(0, 75, 0, 75, 0, 25), name="Front wheel", colour=Colour(1,.5,0,1)),
+    4: Part(BB(0, 75, 0, 75, 0, 25), name="Front wheel", colour=Colour(1,.5,0,1)),
 
-    5: Part(BB(0, 350, 0, 85, 0, 85), name="Rear frame", colour=Colour(1,0,1)),
-    6: Part(BB(0, 300, 0, 50, 0, 50), name="Rear axle", colour=Colour(1,0.5,0)),
-    7: Part(BB(0, 85, 0, 85, 0, 25), name="Rear wheel", colour=Colour(0,0.5,1)),
-    8: Part(BB(0, 85, 0, 85, 0, 25), name="Rear wheel", colour=Colour(0,0.5,1)),
+    5: Part(BB(0, 350, 0, 85, 0, 85), name="Rear frame", colour=Colour(1,0,1,1)),
+    6: Part(BB(0, 300, 0, 50, 0, 50), name="Rear axle", colour=Colour(1,0.5,0,1)),
+    7: Part(BB(0, 85, 0, 85, 0, 25), name="Rear wheel", colour=Colour(0,0.5,1,1)),
+    8: Part(BB(0, 85, 0, 85, 0, 25), name="Rear wheel", colour=Colour(0,0.5,1,1)),
 }
 
 # original_parts = deepcopy(parts)
@@ -164,31 +160,21 @@ backtracking = False  # True if the leaves have been reached.
 
 geo_solver = GS(model_hierarchy_tree, parts, full_model_tree)
 geo_solver.process(-1, processed)
-vis = o3d.visualization.VisualizerWithKeyCallback()
 fit_parts = fit_canvas(parts)
 
-meshes = []
-for p in fit_parts.values():
-    mesh_box = o3d.geometry.TriangleMesh.create_box(p.extent.width(), p.extent.height(), p.extent.depth())
-    mesh_box.paint_uniform_color([*p.colour])
-    mesh_box.compute_vertex_normals()
-    mesh_box.translate(p.extent.min_coord().to_tuple())
-    meshes.append(mesh_box)
+# meshes = []
+# for p in fit_parts.values():
+#     mesh_box = o3d.geometry.TriangleMesh.create_box(p.extent.width(), p.extent.height(), p.extent.depth())
+#     mesh_box.paint_uniform_color([*p.colour])
+#     mesh_box.compute_vertex_normals()
+#     mesh_box.translate(p.extent.min_coord().to_tuple())
+#     meshes.append(mesh_box)
 
-vis.create_window(window_name="test", width=WINDOW_SIZE[0], height=WINDOW_SIZE[1])
+# vis.create_window(window_name="test", width=WINDOW_SIZE[0], height=WINDOW_SIZE[1])
 
-for m in meshes:
-    vis.add_geometry(m)
-vis.run()
-
-
-# class Animator(ShowBase):
-#     def __init__(self):
-#         ShowBase.__init__(self)
-
-
-# an = Animator()
-# an.run()
+# for m in meshes:
+#     vis.add_geometry(m)
+# vis.run()
 
 
 # print(ADJ)

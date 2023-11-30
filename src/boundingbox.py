@@ -46,6 +46,9 @@ class BoundingBox:
     def depth(self):
         return self.maxz - self.minz
 
+    def whd(self):
+        return self.max_coord() - self.min_coord()
+    
     def center(self) -> Coord:
         return Coord(self.width() * 0.5 + self.minx, self.height() * 0.5 + self.miny, self.depth() * 0.5 + self.minz)
 

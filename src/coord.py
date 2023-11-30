@@ -1,3 +1,4 @@
+from typing_extensions import SupportsIndex
 import numpy as np
 from collections import namedtuple
 
@@ -7,11 +8,12 @@ class Coord(namedtuple("Coord", ["x","y","z"])):
     def __add__(self, other):
         return Coord(self.x + other.x, self.y + other.y, self.z + other.z)
     
-
     def __sub__(self, other):
         return Coord(self.x - other.x, self.y - other.y, self.z - other.z)
-
-
+    
+    def __mul__(self, other):
+        return Coord(self.x * other.x, self.y * other.y, self.z * other.z)
+    
     def __repr__(self) -> str:
         return f"<Coord {self.x}, {self.y}, {self.z}>"
     

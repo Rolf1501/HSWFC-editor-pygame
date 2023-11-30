@@ -13,9 +13,6 @@ class AbstractGrid:
     def __post_init__(self):
         pass
 
-    def set_cell_value(self, x, y, z, value):
-        self.grid[y, x, z] = value
-
     def init_grid(self, value):
         self.grid = self.get_filled_grid(value)
 

@@ -1,19 +1,17 @@
 from dataclasses import dataclass, field
 from grid import GridManager
-from terminal import Terminal
+from terminal import Terminal, Void
 from queue import Queue as Q
 from coord import Coord
 from util_data import Cardinals
-from adjacencies import AdjacencyMatrix, Adjacency, Relation as R
-from boundingbox import BoundingBox as BB
-from util_data import Dimensions as D
-from side_properties import SidesDescriptor as SD
+from adjacencies import AdjacencyMatrix, Adjacency
 from offsets import Offset, OffsetFactory
-from util_data import Cardinals as C
 import numpy as np
 from queue import PriorityQueue
 from communicator import Communicator
 from collections import namedtuple
+from toy_examples import ToyExamples as Toy
+from animator import Animator
 comm = Communicator()
 
 @dataclass
@@ -75,21 +73,20 @@ class WFC:
                 for z in range(self.grid_extent.z):
                     self.collapse_queue.put(Coll(self.grid_man.entropy.get(x,y,z), (x,y,z)))
 
-    def collapse(self):
-        coll = self.collapse_queue.get()
-        coll.entropy
+    def collapse(self, coll: Coll) -> (int, Coord):
+        # coll = self.collapse_queue.get()
+        # coll.entropy
         (x,y,z) = coll.coord
         if self.grid_man.grid.get(x,y,z) < 0:
             choice = self.choose(x,y,z)
-            self.grid_man.grid.set(x,y,z, choice)
-            self.grid_man.set_entropy(x,y,z, self._calc_entropy(1))
-            self.prop_queue.put(Prop([choice], (x,y,z)))
             
             for i in self.grid_man.grid.grid[:,:,0]:
                 comm.communicate(i)
-            return choice, (x,y,z)
+
+            self.inform_animator_choice(choice, coll.coord)
+            return choice, Coord(x,y,z)
         else:
-            raise NoChoiceException("No choices remaining")
+            raise NoChoiceException("Cell already chosen.")
         # TODO: update the other cells since a chosen part can cover multiple cells.
         # TODO: consider the available area.
    
@@ -101,16 +98,18 @@ class WFC:
         choices = self.grid_man.weighted_choices.get(x,y,z)
         weights = choices[:,2]
         allowed = np.asarray(choices[:,0], dtype=int)
-        comm.communicate(f"Allowed: {allowed}")
+        comm.communicate(f"Allowed: {allowed}; Indices: {choices[:,1]} Weights: {weights}")
         weights *= allowed
         weight_sum = 1.0 / (np.sum(weights))
         weights *= weight_sum
         comm.communicate(f"Weights: {weights}")
         choice = np.random.choice(choices[:,1], p=weights)
         comm.communicate(f"Chosen: {choice}\n")
+        self.grid_man.grid.set(x,y,z, choice)
+        self.grid_man.set_entropy(x,y,z, self._calc_entropy(1))
         return choice
     
-    def propagate(self, choices: list[int], x, y, z):
+    def propagate(self):
         # Find cells that may be adjacent given the choice.
         # Propagate that info to neighbours of the current cell.
         # Repeat until there is no change.
@@ -128,15 +127,15 @@ class WFC:
                 if self.grid_man.grid.is_chosen(*n):
                     continue
                 
-                comm.communicate(f"Considering neighbour: {n} with choices {choices} at offset {o}")
+                comm.communicate(f"Considering neighbour: {n} with choices {cs} at offset {o}")
                 
                 # # If all terminals are allowed, then the entropy does not change. There is nothing to propagate.
                 # if self.grid_man.entropy[x,y,z] == self.max_entropy:
                 #     continue
 
                 # Which neighbours may be present given the offset and the chosen part.
-                remaining_choices = self.adj_matrix.ADJ[o][int(choices[0])]
-                comm.communicate(f"ADJ matrix for offset: {self.adj_matrix.ADJ[o]}")
+                remaining_choices = self.adj_matrix.ADJ[o][int(cs[0])]
+                # comm.communicate(f"ADJ matrix for offset: {self.adj_matrix.ADJ[o]}")
                 
                 # Find the union of allowed neighbours terminals given the set of choices of the current cell.
                 for c in cs[1:]:
@@ -147,24 +146,17 @@ class WFC:
                 neigbour_w_choices = self.grid_man.weighted_choices.get(*n)
                 pre = np.asarray(neigbour_w_choices[:,0], dtype=bool)
 
-                comm.communicate(f"Checking intersection: \n{pre} and \n{remaining_choices}")
+                comm.communicate(f"Checking intersection: \t{pre} and {remaining_choices}")
                 post = pre & remaining_choices
-                comm.communicate(f"Post: {post}")
 
                 if sum(post) == 0:
                     continue
 
-                # Update weights
-                remaining_choices_weight = self.adj_matrix.ADJ_W[o][int(choices[0])]
-                neigbour_w_choices[:,2] = remaining_choices_weight[post]
-
+                neigbour_w_choices[:,2] = self.adj_matrix.ADJ_W[o][int(cs[0])]
+                comm.communicate(f"\tUpdated weights to: {neigbour_w_choices[:,2]}")
                 if np.any(pre != post):
-
-                    # TODO: make sure not to affect all other entries due to pass by reference.
-                    # neigbour_w_choices = self.grid_man.weighted_choices.get(*n)
+                    comm.communicate(f"\tUpdated choices to: {post}")
                     neigbour_w_choices[:,0] = post
-                    self.grid_man.debug_grid.set(*n, post)
-                    
 
                     # Calculate entropy and get indices of allowed neighbour terminals
                     neighbour_w_choices_i = [i for i in range(len(post)) if post[i]]
@@ -176,49 +168,50 @@ class WFC:
                     if self.grid_man.entropy.get(*n) == self.max_entropy:
                         continue
                     self.prop_queue.put(Prop(neighbour_w_choices_i, n.to_tuple()))
-                self.collapse_queue.put(Coll(self.grid_man.entropy.get(*n), n.to_tuple()))
+
+                    # If only one choice remains, trivially collapse.
+                    if sum(post) == 1:
+                        self.collapse(Coll(self.grid_man.entropy.get(*n), Coord(*n)))
+                
+                if not self.grid_man.grid.is_chosen(*n):
+                    self.collapse_queue.put(Coll(self.grid_man.entropy.get(*n), n.to_tuple()))
+    
+    
+    def inform_animator_choice(self, choice, coord):
+        terminal = wfc.terminals[choice]
+        if not isinstance(terminal, Void):
+            anim.add_model(coord, extent=terminal.extent.whd(), colour=terminal.colour)
+
+
 
 
 class NoChoiceException(Exception):
     def __init_subclass__(cls) -> None:
         return super().__init_subclass__()
-            
-        
 
-symmetry_axes = {
-    D.X: {D.Y, D.Z},
-    D.Y: {D.X, D.Z},
-    D.Z: {D.Y, D.X},
-}
 
-side_desc = SD()
+comm.silence()
 
-terminals = {
-    0: Terminal(BB.from_whd(4,1,2), symmetry_axes, side_desc),
-    1: Terminal(BB.from_whd(1,1,1), None, None) # Void
-}
 
-a = {
-    Adjacency(0, {R(0, 0.8), R(1, 0.2)}, Offset(*C.WEST.value), True),
-    # Adjacency(0, {R(0, 0.8), R(1, 0.2)}, Offset(*C.EAST.value), True),
-    # Adjacency(0, {R(0, 1)}, Offset(*C.EAST.value), True),
-    Adjacency(0, {R(0, 0.2), R(1, 0.8)}, Offset(*C.TOP.value), True),
-    Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
-    Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
-    Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
-    Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True)
-}
-# comm.silence()
+terminals, adjs = Toy().example_slanted()
+# terminals, adjs = Toy().example_zebra_horizontal()
+# terminals, adjs = Toy().example_zebra_vertical()
+# terminals, adjs = Toy().example_zebra_horizontal_3()
+grid_extent = Coord(20,10,5)
+wfc = WFC(terminals, adjs, grid_extent=grid_extent)
+anim = Animator(*grid_extent, unit_dims=Coord(1,1,1))
 
-wfc = WFC(terminals, a)
-# comm.cycle_verbosity()
 while not wfc.collapse_queue.empty():
     try:
-        choice, (x,y,z) = wfc.collapse()
-        comm.communicate((choice, x,y,z))
-        wfc.propagate([choice], x,y,z)
+        coll = wfc.collapse_queue.get()
+        choice, coord = wfc.collapse(coll)
+
+        wfc.prop_queue.put(Prop([choice], coord))
+
+        comm.communicate((choice, coord))
+        wfc.propagate()
     except NoChoiceException:
-        comm.communicate("Cannot collapse")
+        comm.communicate(f"No choices remain for {coord}")
 
 for (o, a) in wfc.adj_matrix.ADJ.items():
     print(o)
@@ -227,6 +220,8 @@ for (o, a) in wfc.adj_matrix.ADJ.items():
 
 for z in range(wfc.grid_extent.z):
     print(wfc.grid_man.grid.grid[:,:,z])
+
+anim.run()
 
 
 # NExt step: fill multiple cells at once depending on a part's extent.
