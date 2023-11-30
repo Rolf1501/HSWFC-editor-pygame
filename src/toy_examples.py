@@ -61,8 +61,8 @@ class ToyExamples():
 
     def example_zebra_vertical(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
         temrinals =  {
-            0: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(1,1,1,1)), # white
-            1: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(0,0,0,1)), # black
+            0: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(0.7,0.7,0.7,1)), # white
+            1: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(0.05,0.05,0.05,1)), # black
         }
 
         adjs = {
@@ -81,7 +81,7 @@ class ToyExamples():
     def example_slanted(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
 
         terminals = {
-            0: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(1,0,0,1)),
+            0: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(0.8,0,0,1)),
             1: Void(BB.from_whd(1,1,1))
         }
 

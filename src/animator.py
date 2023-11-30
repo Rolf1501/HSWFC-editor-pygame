@@ -31,7 +31,6 @@ class Animator(ShowBase):
         self.delta_acc = 0
         self.step_size = 0.1 # in seconds
 
-
         self.init_default_material()
         self.init_lights()
         self.init_key_events()
@@ -44,25 +43,41 @@ class Animator(ShowBase):
         p_light = PointLight("p_light")
         p_light.attenuation = (0.5,0,0)
         p_lnp = self.render.attach_new_node(p_light)
-        p_lnp.set_pos(50,50,50)
+        p_lnp.set_pos(50,20,50)
         self.render.set_light(p_lnp)
 
         p_light2 = PointLight("p_light2")
-        p_light2.attenuation = (0.5,0,0)
+        p_light2.attenuation = (0.8,0,0)
         p_lnp2 = self.render.attach_new_node(p_light2)
-        p_lnp2.set_pos(-50,-50,-50)
+        p_lnp2.set_pos(-50,-20,-50)
         self.render.set_light(p_lnp2)
 
     def init_key_events(self):
-        self.accept("a-up", self.show_next_model)
         self.accept("h-up", self.toggle_hidden, [0])
         self.accept("p", self.toggle_pause)
+        self.accept("r-up", self.hide_all)
+        self.accept("arrow_right-up", self.show_next)
+        self.accept("arrow_left-up", self.hide_previous)
 
     def init_default_material(self):
-        self.default_material = Material()
-        self.default_material.set_ambient((0.2,0.2,0.2,1))
-        self.default_material.set_diffuse((0.5,0.5,0.5,1))
+        self.default_material = Material(name="default")
+        self.default_material.set_ambient((0.1,0.1,0.1,1))
+        self.default_material.set_diffuse((0,0.5,0.5,1))
         self.default_material.set_shininess(10)
+
+    def make_material(self, colour: Colour):
+        material = Material(name="default")
+        material.set_ambient((0.1,0.1,0.1,1))
+        material.set_diffuse(colour)
+        material.set_shininess(2)
+        return material
+
+    def hide_all(self):
+        for k in self.models.keys():
+            self.hide_model(k)
+
+        self.shown_model_index = 0
+
 
     def add_model(self,  origin_coord: Coord, extent: Coord=Coord(1,1,1), path="parts/cube.egg", colour: Colour=Colour(1,1,0,1)):
         """
@@ -78,26 +93,31 @@ class Animator(ShowBase):
         model.set_scale(scalar)
         model.set_pos(origin_coord)
 
-        model.set_material(self.default_material)
+        model.set_material(self.make_material(colour))
         # mat = model.get_material()
         # mat.set_diffuse(colour)
         new_key = len(self.models.keys())
 
+        model.reparentTo(self.render)
+        model.hide()
         self.models[new_key] = model
         self.update_canvas(origin_coord, extent, new_key)
 
-    def show_next_model(self):
-        if self.shown_model_index in self.models.keys():
-            self.models[self.shown_model_index].reparentTo(self.render)
+    def show_next(self):
+        if self.show_model(self.shown_model_index) and self.shown_model_index < len(self.models.keys()) - 1:
             self.shown_model_index += 1
 
+    def hide_previous(self):
+        if self.hide_model(self.shown_model_index) and self.shown_model_index > 0:
+            self.shown_model_index -= 1
+    
     def toggle_pause(self):
         self.paused = not self.paused
 
     def play(self, task):
         if self.delta_acc >= self.step_size:
             if not self.paused:
-                self.show_next_model()
+                self.show_next()
                 self.delta_acc = 0
         else:
             dt = self.clock.get_dt()
@@ -139,11 +159,15 @@ class Animator(ShowBase):
         model = self.get_model(key)
         if model:
             self.models[key].hide()
+            return True
+        return False
 
     def show_model(self, key: int):
         model = self.get_model(key)
         if model:
             self.models[key].show()
+            return True
+        return False
 
     def scale_to_grid(self, model: NodePath) -> Coord:
         """

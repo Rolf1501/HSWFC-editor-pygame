@@ -32,8 +32,7 @@ class Model:
         comm.communicate("Deriving subtrees...")
         for l in self.links:
             if (l.source, l.attachment) in self.model_tree.edges:
-                self.model_subtrees_memoi[(l.source, l.attachment)] = self.model_tree.get_attachment_subtree(l.source,
-                                                                                                             l.attachment)
+                self.model_subtrees_memoi[(l.source, l.attachment)] = self.model_tree.get_attachment_subtree(l.source, l.attachment)
             else:
                 # If the two nodes are not adjacent, the attachment group can be found by performing 
                 # a cut between the attachment and penultimate node in the shortest path from source to attachment.

@@ -8,8 +8,6 @@ from communicator import Communicator
 from model_tree import ModelTree
 from copy import deepcopy
 from geometric_solver import GeometricSolver as GS
-# from wfc import WFC
-
 
 import open3d as o3d
 
@@ -54,7 +52,6 @@ parts: dict[int, Part] = {
     8: Part(BB(0, 85, 0, 85, 0, 25), name="Rear wheel", colour=Colour(0,0.5,1,1)),
 }
 
-# original_parts = deepcopy(parts)
 # Edges determine the hierarchy such that for each edge (u, v), u consists of v.
 edges = [
     mht.MHEdge(-1, 0),

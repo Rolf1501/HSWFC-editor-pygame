@@ -9,7 +9,6 @@ class AbstractGrid:
     default_fill_value: any = field(init=True, default=None)
     grid: np.ndarray = field(init=False)
 
-
     def __post_init__(self):
         pass
 
@@ -26,7 +25,7 @@ class AbstractGrid:
         return self.grid[y,x,z]
     
     def set(self, x, y, z, value):
-        self.grid[y, x, z] = value
+        self.grid[y,x,z] = value
 
 class Grid(AbstractGrid):
     def __post_init__(self):
@@ -60,14 +59,9 @@ class GridManager():
                 for d in range(self.depth):
                     self.weighted_choices.set(w,h,d, np.asarray([[True, k, 1.0] for k in keys], dtype=float))
                     self.debug_grid.set(w,h,d, np.asarray([True for _ in keys], dtype=float))
-        #  = self.get_filled_grid(, dtype=float))
 
     def init_entropy(self, max_entropy: float):
         self.entropy.init_grid(max_entropy)
 
     def set_w_choice(self, x, y, z, weighted_choices: np.ndarray):
         self.weighted_choices.set(x,y,z, weighted_choices)
-
-    # def set_w_choice_allowed(self, x, y, z, allowed_choices):
-
-

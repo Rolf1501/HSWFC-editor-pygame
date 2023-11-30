@@ -193,11 +193,11 @@ class NoChoiceException(Exception):
 comm.silence()
 
 
-terminals, adjs = Toy().example_slanted()
+# terminals, adjs = Toy().example_slanted()
 # terminals, adjs = Toy().example_zebra_horizontal()
-# terminals, adjs = Toy().example_zebra_vertical()
+terminals, adjs = Toy().example_zebra_vertical()
 # terminals, adjs = Toy().example_zebra_horizontal_3()
-grid_extent = Coord(20,10,5)
+grid_extent = Coord(3,3,2)
 wfc = WFC(terminals, adjs, grid_extent=grid_extent)
 anim = Animator(*grid_extent, unit_dims=Coord(1,1,1))
 
