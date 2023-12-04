@@ -42,7 +42,7 @@ class OffsetFactory:
     # def __post_init__(self):
     #     self.offsets = np.asmatrix(self.getOffsets(self.is_cardinal, self.dimensions))
 
-    def get_offsets(self, dimensions: int = 2, cardinal: bool = True) -> list[Offset]:
+    def get_offsets(self, dimensions: int = 3, cardinal: bool = True) -> list[Offset]:
         if dimensions > 3 or dimensions < 1:
             raise DimensionsNotSupported(f"Dimension should not be less than 1 and should not exceed 3. Got: {dimensions}")
         if cardinal:

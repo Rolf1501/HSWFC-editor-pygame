@@ -1,8 +1,8 @@
 from terminal import Terminal, Void
 from boundingbox import BoundingBox as BB
 from side_properties import SidesDescriptor as SD
-from adjacencies import Adjacency, Relation as R
-from offsets import Offset
+from adjacencies import Adjacency, AdjacencyAny, Relation as R
+from offsets import Offset, OffsetFactory
 from util_data import Cardinals as C, Dimensions as D, Colour
 
 class ToyExamples():
@@ -15,6 +15,60 @@ class ToyExamples():
             D.Y: {D.X, D.Z},
             D.Z: {D.Y, D.X},
         }
+    
+    def example_big_tiles(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
+        terminals = {
+            # For a cuboid with vertex ids: 
+            #   7------6
+            #  /|     /|
+            # 4------5 |
+            # | 3----|-2 
+            # |/     |/
+            # 0------1
+            
+            0: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(0.5,0,0,1)), # red; corner_04
+            1: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(0,0.5,0,1)), # green; corner_15
+            2: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(0,0,0.5,1)), # blue; corner_26
+            3: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(0,0.5,0.5,1)), # cyan; corner_37
+            4: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(0.5,0,0.5,1)), # magenta; face_0154
+            5: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(0.5,0.5,0.5,1)), # yellow; face_3267
+        }
+
+        adjs = {
+            Adjacency(0, {R(3, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(0, {R(1, 1), R(4, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(0, {R(3, 1), R(2, 1), R(5, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(0, {R(1, 1), R(2, 1)}, Offset(*C.WEST.value), True),
+
+            Adjacency(1, {R(2, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(1, {R(3, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(1, {R(2, 1), R(3, 1), R(5, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(1, {R(4, 1)}, Offset(*C.WEST.value), True),
+
+            Adjacency(2, {R(4, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(2, {R(3, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(2, {}, Offset(*C.SOUTH.value), True),
+            Adjacency(2, {R(3, 1), R(5, 1)}, Offset(*C.WEST.value), True),
+
+            Adjacency(3, {R(4, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(3, {R(5, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(3, {}, Offset(*C.SOUTH.value), True),
+            Adjacency(3, {}, Offset(*C.WEST.value), True),
+
+            Adjacency(4, {R(5, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(4, {R(4, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(4, {R(5, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(4, {R(4, 1)}, Offset(*C.WEST.value), True),
+
+            Adjacency(5, {}, Offset(*C.NORTH.value), True),      
+            Adjacency(5, {R(5, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(5, {}, Offset(*C.SOUTH.value), True),      
+            Adjacency(5, {R(5, 1)}, Offset(*C.WEST.value), True),
+        }
+
+        top_bottom_any = {AdjacencyAny(i, o, True) for i in terminals for o in [Offset(*C.TOP.value), Offset(*C.BOTTOM.value)]}
+
+        return terminals, adjs.union(top_bottom_any)
 
     def example_zebra_horizontal(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
         temrinals =  {

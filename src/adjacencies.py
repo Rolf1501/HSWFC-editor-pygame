@@ -16,6 +16,9 @@ class Adjacency:
         self.offset = offset
         self.symmetric = symmetric
 
+class AdjacencyAny(Adjacency):
+    def __init__(self, source: int, offset: Offset, symmetric: bool) -> None:
+        super().__init__(source, {}, offset, symmetric)
 
 @dataclass
 class AdjacencyMatrix:
@@ -43,10 +46,29 @@ class AdjacencyMatrix:
         for adj in adjs:
             neg_offset = adj.offset.negation()
             source_i = self.parts_to_index_mapping[adj.source]
-            for neighbour in adj.allowed_neighbours:
-                neighbour_i = self.parts_to_index_mapping[neighbour.other]
-                self.ADJ[adj.offset][source_i, neighbour_i] = True
-                self.ADJ_W[adj.offset][source_i, neighbour_i] = neighbour.weight
-                if adj.symmetric:
-                    self.ADJ[neg_offset][neighbour_i, source_i] = True
-                    self.ADJ_W[neg_offset][neighbour_i, source_i] = neighbour.weight
+            if isinstance(adj, AdjacencyAny):
+                self.ADJ[adj.offset][source_i] = self.get_full(True)
+                self.ADJ_W[adj.offset][source_i] = self.get_full(1)
+            else:
+                for neighbour in adj.allowed_neighbours:
+                    neighbour_i = self.parts_to_index_mapping[neighbour.other]
+                    self.ADJ[adj.offset][source_i, neighbour_i] = True
+                    self.ADJ_W[adj.offset][source_i, neighbour_i] = neighbour.weight
+                    if adj.symmetric:
+                        self.ADJ[neg_offset][neighbour_i, source_i] = True
+                        self.ADJ_W[neg_offset][neighbour_i, source_i] = neighbour.weight
+
+    def get_adj(self, offset: Offset, part_id: int):
+        return self.ADJ[offset][self.parts_to_index_mapping[part_id]]
+        
+    def get_adj_w(self, offset: Offset, part_id: int):
+        return self.ADJ_W[offset][self.parts_to_index_mapping[part_id]]
+
+    def print_adj(self):
+        for (o, a) in self.ADJ.items():
+            print(o)
+            for i in a:
+                print(i)
+
+    def get_full(self, value):
+        return np.full((len(self.parts),), value)

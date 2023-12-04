@@ -12,6 +12,8 @@ from communicator import Communicator
 from collections import namedtuple
 from toy_examples import ToyExamples as Toy
 from animator import GridAnimator
+from time import time
+
 comm = Communicator()
 
 @dataclass
@@ -33,7 +35,7 @@ class Coll(namedtuple("Coll", ["entropy", "coord"])):
 class WFC:
     terminals: dict[int, Terminal]
     adjacencies: set[Adjacency]
-    grid_extent: Coord = field(default=Coord(3,3,1))
+    grid_extent: Coord = field(default=Coord(3,3,3))
     seeds: list[Placement] = field(default=None)
     init_seed: Coord = field(default=None)
     adj_matrix: AdjacencyMatrix = field(init=False, default=None)
@@ -48,6 +50,7 @@ class WFC:
         keys = np.asarray([*self.terminals.keys()])
         adj = self.adjacencies
         self.adj_matrix = AdjacencyMatrix(keys, adj)
+        self.adj_matrix.print_adj()
         self.grid_man = GridManager(*self.grid_extent)
         self.offsets = OffsetFactory().get_offsets(3)
 
@@ -58,8 +61,8 @@ class WFC:
         # grid_extent_array = self.grid_extent.to_numpy_array()
         self.collapse_queue = PriorityQueue()
         # self.add_all_collapse_queue()
-
-        self.collapse_queue.put(Coll(self.grid_man.entropy.get(0,0,0), (0,0,0)))
+        start_coord = Coord(2,0,2)
+        self.collapse_queue.put(Coll(self.grid_man.entropy.get(*start_coord), start_coord))
 
         # TODO: process seeds
 
@@ -80,8 +83,7 @@ class WFC:
         if self.grid_man.grid.get(x,y,z) < 0:
             choice = self.choose(x,y,z)
             
-            for i in self.grid_man.grid.grid[:,:,0]:
-                comm.communicate(i)
+            comm.communicate(self.grid_man.grid.print_xz)
 
             self.inform_animator_choice(choice, coll.coord)
             return choice, Coord(x,y,z)
@@ -134,13 +136,12 @@ class WFC:
                 #     continue
 
                 # Which neighbours may be present given the offset and the chosen part.
-                remaining_choices = self.adj_matrix.ADJ[o][int(cs[0])]
+                remaining_choices = self.adj_matrix.get_full(False)
                 # comm.communicate(f"ADJ matrix for offset: {self.adj_matrix.ADJ[o]}")
                 
                 # Find the union of allowed neighbours terminals given the set of choices of the current cell.
-                for c in cs[1:]:
-                    if c:
-                        remaining_choices |= self.adj_matrix.ADJ[o][int(c)]
+                for c in cs:
+                    remaining_choices |= self.adj_matrix.get_adj(o, int(c))
                 
                 # Find the set of choices currently allowed for the neighbour
                 neigbour_w_choices = self.grid_man.weighted_choices.get(*n)
@@ -152,7 +153,10 @@ class WFC:
                 if sum(post) == 0:
                     continue
 
-                neigbour_w_choices[:,2] = self.adj_matrix.ADJ_W[o][int(cs[0])]
+                neigbour_w_choices[:,2][int(cs[0])]
+                for i in cs[1:]:
+                    neigbour_w_choices[:,2] += self.adj_matrix.get_adj_w(o, int(i))
+
                 comm.communicate(f"\tUpdated weights to: {neigbour_w_choices[:,2]}")
                 if np.any(pre != post):
                     comm.communicate(f"\tUpdated choices to: {post}")
@@ -194,11 +198,21 @@ comm.silence()
 # terminals, adjs = Toy().example_slanted()
 # terminals, adjs = Toy().example_zebra_horizontal()
 # terminals, adjs = Toy().example_zebra_vertical()
-terminals, adjs = Toy().example_zebra_horizontal_3()
-grid_extent = Coord(10,10,5)
-wfc = WFC(terminals, adjs, grid_extent=grid_extent)
-anim = GridAnimator(*grid_extent, unit_dims=Coord(1,1,1))
+# terminals, adjs = Toy().example_zebra_horizontal_3()
+terminals, adjs = Toy().example_big_tiles()
+grid_extent = Coord(20,20,20)
 
+
+start_time = time()
+wfc = WFC(terminals, adjs, grid_extent=grid_extent)
+wfc_init_time = time() - start_time
+print(f"WFC init: {wfc_init_time}")
+
+anim = GridAnimator(*grid_extent, unit_dims=Coord(1,1,1))
+anim_init_time = time() - start_time - wfc_init_time
+print(f"Anim init time: {anim_init_time}")
+
+print("Running WFC")
 while not wfc.collapse_queue.empty():
     try:
         coll = wfc.collapse_queue.get()
@@ -209,16 +223,14 @@ while not wfc.collapse_queue.empty():
         comm.communicate((choice, coord))
         wfc.propagate()
     except NoChoiceException:
-        comm.communicate(f"No choices remain for {coord}")
+        pass# comm.communicate(f"No choices remain for {coord}")
 
-for (o, a) in wfc.adj_matrix.ADJ.items():
-    print(o)
-    for i in a:
-        print(i)
-
-for z in range(wfc.grid_extent.z):
-    print(wfc.grid_man.grid.grid[:,:,z])
-
+run_time = time() - anim_init_time - wfc_init_time - start_time
+print(f"Running time: {run_time}")
+# wfc.adj_matrix.print_adj()
+print(f"Total elapsed time: {time() - start_time}")
+# wfc.grid_man.grid.print_xz()
+# print(f"PTINDEX: {wfc.adj_matrix.parts_to_index_mapping}")
 anim.run()
 
 

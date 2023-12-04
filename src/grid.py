@@ -27,6 +27,19 @@ class AbstractGrid:
     def set(self, x, y, z, value):
         self.grid[y,x,z] = value
 
+    def print_xy(self):
+        for z in range(self.depth):
+            print(self.grid[:,:,z])
+
+    def print_xz(self):
+        for y in range(self.height):
+            print(np.rot90(self.grid[y,:,:]))
+    
+    def print_yz(self):
+        for x in range(self.width):
+            print(self.grid[:,x,:])
+
+
 class Grid(AbstractGrid):
     def __post_init__(self):
         self.init_grid(self.default_fill_value)
