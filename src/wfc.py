@@ -11,7 +11,7 @@ from queue import PriorityQueue
 from communicator import Communicator
 from collections import namedtuple
 from toy_examples import ToyExamples as Toy
-from animator import Animator
+from animator import GridAnimator
 comm = Communicator()
 
 @dataclass
@@ -183,8 +183,6 @@ class WFC:
             anim.add_model(coord, extent=terminal.extent.whd(), colour=terminal.colour)
 
 
-
-
 class NoChoiceException(Exception):
     def __init_subclass__(cls) -> None:
         return super().__init_subclass__()
@@ -195,11 +193,11 @@ comm.silence()
 
 # terminals, adjs = Toy().example_slanted()
 # terminals, adjs = Toy().example_zebra_horizontal()
-terminals, adjs = Toy().example_zebra_vertical()
-# terminals, adjs = Toy().example_zebra_horizontal_3()
-grid_extent = Coord(3,3,2)
+# terminals, adjs = Toy().example_zebra_vertical()
+terminals, adjs = Toy().example_zebra_horizontal_3()
+grid_extent = Coord(10,10,5)
 wfc = WFC(terminals, adjs, grid_extent=grid_extent)
-anim = Animator(*grid_extent, unit_dims=Coord(1,1,1))
+anim = GridAnimator(*grid_extent, unit_dims=Coord(1,1,1))
 
 while not wfc.collapse_queue.empty():
     try:

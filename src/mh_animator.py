@@ -9,8 +9,11 @@ from model_tree import ModelTree
 from copy import deepcopy
 from geometric_solver import GeometricSolver as GS
 
-import open3d as o3d
-
+# import open3d as o3d
+# import panda3d as p3d
+# from panda3d.core import load_prc_file, NodePath, Material, PointLight
+# from direct.showbase.ShowBase import ShowBase
+from animator import GSAnimator
 comm = Communicator()
 
 select_mode = False
@@ -38,15 +41,15 @@ end = (0, 0)
 
 parts: dict[int, Part] = {
     -1: Part(BB(0, 1, 0, 1, 0, 1), name="Root", colour=Colour(0,0,0,1)),
-    0: Part(BB(0, 500, 0, 10, 0, 200), name="Car frame", colour=Colour(0,0,0.5,1)),
+    0: Part(BB(0, 500, 0, 10, 0, 200), name="Car frame", colour=Colour(0,0,0.5,0.5)),
     9: Part(BB(0, 500, 0, 10, 0, 150), name="Frame", colour=Colour(0,0,1,1)),
 
-    1: Part(BB(0, 300, 0, 75, 0, 75), name="Front frame", colour=Colour(0,1,1,1)),
+    1: Part(BB(0, 300, 0, 75, 0, 75), name="Front frame", colour=Colour(0,1,1,0.5)),
     2: Part(BB(0, 250, 0, 50, 0, 50), name="Front axle", colour=Colour(.5,0,1,1)),
     3: Part(BB(0, 75, 0, 75, 0, 25), name="Front wheel", colour=Colour(1,.5,0,1)),
     4: Part(BB(0, 75, 0, 75, 0, 25), name="Front wheel", colour=Colour(1,.5,0,1)),
 
-    5: Part(BB(0, 350, 0, 85, 0, 85), name="Rear frame", colour=Colour(1,0,1,1)),
+    5: Part(BB(0, 350, 0, 85, 0, 85), name="Rear frame", colour=Colour(1,0,1,0.5)),
     6: Part(BB(0, 300, 0, 50, 0, 50), name="Rear axle", colour=Colour(1,0.5,0,1)),
     7: Part(BB(0, 85, 0, 85, 0, 25), name="Rear wheel", colour=Colour(0,0.5,1,1)),
     8: Part(BB(0, 85, 0, 85, 0, 25), name="Rear wheel", colour=Colour(0,0.5,1,1)),
@@ -157,8 +160,11 @@ backtracking = False  # True if the leaves have been reached.
 
 geo_solver = GS(model_hierarchy_tree, parts, full_model_tree)
 geo_solver.process(-1, processed)
-fit_parts = fit_canvas(parts)
+fit_parts = fit_canvas(geo_solver.parts)
 
+gsanimator = GSAnimator(fit_parts)
+# gsanimator.show_all()
+gsanimator.run()
 # meshes = []
 # for p in fit_parts.values():
 #     mesh_box = o3d.geometry.TriangleMesh.create_box(p.extent.width(), p.extent.height(), p.extent.depth())
