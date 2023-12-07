@@ -1,14 +1,12 @@
 from panda3d.core import load_prc_file, NodePath, Material, PointLight
 from direct.showbase.ShowBase import ShowBase
-from queue import Queue as Q
-from collections import namedtuple
 from grid import Grid
 from coord import Coord
 from util_data import Colour
 from model import Part
 
 class Animator(ShowBase):
-    def __init__(self, unit_dims: Coord=Coord(1,1,1)):
+    def __init__(self, lookat_point = Coord(0,0,0), default_camera_pos=Coord(10,10,10), unit_dims: Coord=Coord(1,1,1)):
         ShowBase.__init__(self)
         # Loading a config is required in order for the models in relative paths to be found.
         load_prc_file("./Config.prc")
@@ -19,6 +17,7 @@ class Animator(ShowBase):
         self.init_camera_key_events()
         self.disable_mouse()
         self.models: dict[int, NodePath]  = {}
+        self.lookat_point = lookat_point
 
         self.unit_dims = unit_dims # Specifies the dimensions of a single cell.
 
@@ -43,8 +42,8 @@ class Animator(ShowBase):
         # Camera lookat
         self.accept("l", self.camera_lookat)
 
-    def camera_lookat(self, point: Coord=Coord(0,0,0), up: Coord=Coord(0,0,1)):
-        self.camera.look_at(point, up)
+    def camera_lookat(self, up: Coord=Coord(0,1,0)):
+        self.camera.look_at(self.lookat_point, up)
         print(self.camera.get_pos())
         print(self.camera.get_hpr())
 
@@ -69,8 +68,9 @@ class Animator(ShowBase):
         self.render.set_light(p_lnp2)
 
     def init_camera(self):
-        self.default_camera_pos = Coord(1,11,3)
+        self.default_camera_pos = self.default_camera_pos
         self.camera.set_pos(self.default_camera_pos)
+        self.camera.set_hpr(0,0,0)
         self.camera_lookat()
 
     def init_default_material(self):
@@ -176,7 +176,11 @@ class GridAnimator(Animator):
 
     def __init__(self, grid_w=20, grid_h=20, grid_d=5, unit_dims=Coord(1,1,1)):
         self.unit_dims = unit_dims
-        super().__init__(unit_dims=unit_dims)
+        lookat_point=Coord(grid_w, grid_h, grid_d).scaled(0.5)
+        default_cam_pos = lookat_point + Coord(0,grid_h,0)
+        self.lookat_point = lookat_point
+        self.default_camera_pos = default_cam_pos
+        super().__init__(lookat_point=lookat_point, default_camera_pos=default_cam_pos, unit_dims=unit_dims)
 
         # Keep reference from canvas to model.
         self.canvas = Grid(grid_w, grid_h, grid_d, default_fill_value=-1)

@@ -200,7 +200,7 @@ comm.silence()
 # terminals, adjs = Toy().example_zebra_vertical()
 # terminals, adjs = Toy().example_zebra_horizontal_3()
 terminals, adjs = Toy().example_big_tiles()
-grid_extent = Coord(20,20,20)
+grid_extent = Coord(10,10,10)
 
 
 start_time = time()
@@ -213,6 +213,8 @@ anim_init_time = time() - start_time - wfc_init_time
 print(f"Anim init time: {anim_init_time}")
 
 print("Running WFC")
+
+# TODO: can move this to a task in the animator. Allows for full control over the collapse queue progression.
 while not wfc.collapse_queue.empty():
     try:
         coll = wfc.collapse_queue.get()
