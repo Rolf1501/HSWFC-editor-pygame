@@ -14,7 +14,6 @@ class Terminal:
     orientation: C = field(default=C.NORTH)
     unique_orientations: int = field(init=False)
 
-
 class Void(Terminal):
     def __init__(self, extent: BB):
         self.extent = extent

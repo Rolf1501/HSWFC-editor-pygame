@@ -1,7 +1,7 @@
 from enum import Enum
 from dataclasses import dataclass, field
 from util_data import Cardinals as C
-from grid import Grid
+from offsets import Offset
 
 class SideProperties(Enum):
     STUDS = 0
@@ -17,12 +17,16 @@ class SidesDescriptor:
     east: SideProperties = field(default=SideProperties.SMOOTH)
     south: SideProperties = field(default=SideProperties.SMOOTH)
     west: SideProperties = field(default=SideProperties.SMOOTH)
+    offset_dict: dict[C, SideProperties] = field(init=False)
 
     def __post_init__(self):
-        self.mask = Grid(3,3,3, -1)
-        self.mask.set(*C.TOP.value, self.top.value) 
-        self.mask.set(*C.BOTTOM.value, self.bottom.value) 
-        self.mask.set(*C.NORTH.value, self.north.value) 
-        self.mask.set(*C.EAST.value, self.east.value) 
-        self.mask.set(*C.SOUTH.value, self.south.value) 
-        self.mask.set(*C.WEST.value, self.west.value) 
+        self.offset_dict = {}
+        self.offset_dict[C.TOP.value] = self.top
+        self.offset_dict[C.BOTTOM.value] = self.bottom
+        self.offset_dict[C.NORTH.value] = self.north
+        self.offset_dict[C.EAST.value] = self.east
+        self.offset_dict[C.SOUTH.value] = self.south
+        self.offset_dict[C.WEST.value] = self.west
+        
+    def get_from_offset(self, offset: Offset):
+        return self.offset_dict[offset]

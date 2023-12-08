@@ -4,6 +4,7 @@ from grid import Grid
 from coord import Coord
 from util_data import Colour
 from model import Part
+from queue import Queue as Q
 
 class Animator(ShowBase):
     def __init__(self, lookat_point = Coord(0,0,0), default_camera_pos=Coord(10,10,10), unit_dims: Coord=Coord(1,1,1)):
@@ -15,12 +16,24 @@ class Animator(ShowBase):
         self.init_lights()
         self.init_camera()
         self.init_camera_key_events()
+        self.init_camera_mouse_events()
         self.disable_mouse()
+        self.mouse_enabled = False
         self.models: dict[int, NodePath]  = {}
         self.lookat_point = lookat_point
 
         self.unit_dims = unit_dims # Specifies the dimensions of a single cell.
 
+    def init_camera_mouse_events(self):
+        self.accept("x", self.toggle_mouse_controls)
+
+    def toggle_mouse_controls(self):
+        if self.mouse_enabled:
+            self.disable_mouse()
+        else:
+            self.enable_mouse()
+        
+        self.mouse_enabled = not self.mouse_enabled
     
     def init_camera_key_events(self):
         # Camera translation
@@ -136,6 +149,7 @@ class Animator(ShowBase):
 
     def hide_model(self, key: int):
         model = self.get_model(key)
+        print(f"Hide model at pos: {model.get_pos()}")
         if model:
             self.models[key].hide()
             return True
@@ -143,11 +157,11 @@ class Animator(ShowBase):
 
     def show_model(self, key: int):
         model = self.get_model(key)
+        print(f"Show model at pos: {model.get_pos()}")
         if model:
             self.models[key].show()
             return True
         return False
-
 
 class GSAnimator(Animator):
     def __init__(self, parts: dict[int, Part], unit_dims: Coord = Coord(1, 1, 1)):
@@ -170,7 +184,6 @@ class GSAnimator(Animator):
 
     def init_key_events(self):
         self.accept("m", self.show_all)
-        self.accept("x", self.enable_mouse)
 
 class GridAnimator(Animator):
 
@@ -184,12 +197,14 @@ class GridAnimator(Animator):
 
         # Keep reference from canvas to model.
         self.canvas = Grid(grid_w, grid_h, grid_d, default_fill_value=-1)
-
+        self.colours = Grid(grid_w, grid_h, grid_d, default_fill_value=Q())
         self.shown_model_index = 0
 
         self.paused = True
         self.delta_acc = 0
-        self.step_size = 0.1 # in seconds
+        self.step_size = 0.05 # in seconds
+
+        self.axis_system = self.create_axes()
 
         self.init_key_events()
         self.init_tasks()
@@ -201,6 +216,35 @@ class GridAnimator(Animator):
         self.accept("p", self.toggle_pause)
         self.accept("arrow_right-up", self.show_next)
         self.accept("arrow_left-up", self.hide_previous)
+        self.accept("tab", self.toggle_next_colour_mode)
+        self.accept("z", self.toggle_axes)
+    
+    def create_axes(self, path="parts/cube.egg"):
+        model_x: NodePath = self.loader.loadModel(path)
+        model_y: NodePath = self.loader.loadModel(path)
+        model_z: NodePath = self.loader.loadModel(path)
+
+        axis_diam = 1 * self.scale_to_unit(model_x).x
+        axis_length = 2 * self.scale_to_unit(model_x).x
+        model_x.set_pos(0,0,0)
+        model_y.set_pos(0,0,0)
+        model_z.set_pos(0,0,0)
+        model_x.set_scale(axis_length, axis_diam, axis_diam)
+        model_y.set_scale(axis_diam, axis_length, axis_diam)
+        model_z.set_scale(axis_diam, axis_diam, axis_length)
+        model_x.set_material(self.make_material(Colour(1,0,0,1)))
+        model_y.set_material(self.make_material(Colour(0,1,0,1)))
+        model_z.set_material(self.make_material(Colour(0,0,1,1)))
+
+        return [model_x, model_y, model_z]
+
+    def toggle_axes(self):
+        for m in self.axis_system:
+            if m.is_hidden():
+                print("toggled model on")
+                m.show()
+            else:
+                m.hide()
 
     def hide_all(self):
         for k in self.models.keys():
@@ -216,16 +260,41 @@ class GridAnimator(Animator):
         """
         # TODO: account for rotation of parts. Currently not applicable since the model's rotation is irrelevant.
         _, new_key = self.make_model(origin_coord, extent, path, colour)
-
+        # self.add_colour_mode(*origin_coord, colour)
         self.update_canvas(origin_coord, extent, new_key)
 
-    def show_next(self):
+
+    def show_next(self, pause=True):
+        if pause:
+            self.paused = True
         if self.show_model(self.shown_model_index) and self.shown_model_index < len(self.models.keys()) - 1:
             self.shown_model_index += 1
 
-    def hide_previous(self):
+    def hide_previous(self, pause=True):
+        if pause:
+            self.paused = True
         if self.hide_model(self.shown_model_index) and self.shown_model_index > 0:
             self.shown_model_index -= 1
+
+    def add_colour_mode(self, x, y, z, new_colour: Colour):
+        self.colours.get(x, y, z).put(self.make_material(new_colour))
+
+    def to_next_colour_mode(self, x, y, z):
+        key = self.canvas.get(x,y,z)
+        model = self.models[key]
+
+        # Save current material colour
+        old_colour = model.get_material()
+        
+        new_colour = self.colours.get(x, y, z).get()
+        model.set_material(new_colour)
+        self.colours.get(x, y, z).put(old_colour)
+
+    def toggle_next_colour_mode(self):
+        for x in range(self.colours.width):
+            for y in range(self.colours.height):
+                for z in range(self.colours.depth):
+                    self.to_next_colour_mode(x,y,z)
     
     def toggle_pause(self):
         self.paused = not self.paused
@@ -233,7 +302,7 @@ class GridAnimator(Animator):
     def play(self, task):
         if self.delta_acc >= self.step_size:
             if not self.paused:
-                self.show_next()
+                self.show_next(pause=False)
                 self.delta_acc = 0
         else:
             dt = self.clock.get_dt()
@@ -247,7 +316,3 @@ class GridAnimator(Animator):
             for y in range(extent.y):
                 for z in range(extent.z):
                     self.canvas.set(c_x + x, c_y + y, c_z + z, key)
-    
-
-
-    

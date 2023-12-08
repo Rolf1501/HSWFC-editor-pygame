@@ -22,10 +22,11 @@ class AbstractGrid:
         return x < self.width and y < self.height and z < self.depth and x >= 0 and y >= 0 and z >= 0
     
     def get(self, x, y, z):
-        return self.grid[y,x,z]
+        return self.grid[int(y),int(x),int(z)] if self.within_bounds(x, y, z) else None
     
     def set(self, x, y, z, value):
-        self.grid[y,x,z] = value
+        if self.within_bounds(x, y, z):
+            self.grid[int(y),int(x),int(z)] = value 
 
     def print_xy(self):
         for z in range(self.depth):
@@ -45,7 +46,8 @@ class Grid(AbstractGrid):
         self.init_grid(self.default_fill_value)
 
     def is_chosen(self, x, y, z) -> bool:
-        return self.get(x,y,z) >= 0
+        choice = self.get(x,y,z)
+        return choice > self.default_fill_value
 
 @dataclass
 class GridManager():
@@ -55,13 +57,13 @@ class GridManager():
     grid: Grid = field(init=False)
     entropy: Grid = field(init=False)
     weighted_choices: Grid = field(init=False) # 4D array: 3D for cells, 1D for choices.
-    debug_grid: Grid = field(init=False)
+    cluster_grid: Grid = field(init=False)
 
     def __post_init__(self):
         self.grid = Grid(self.width, self.height, self.depth, default_fill_value=-1)
         self.entropy = Grid(self.width, self.height, self.depth, default_fill_value=None)
         self.weighted_choices = Grid(self.width, self.height, self.depth, default_fill_value=None)
-        self.debug_grid = Grid(self.width, self.height, self.depth, default_fill_value=None)
+        self.cluster_grid = Grid(self.width, self.height, self.depth, default_fill_value=None)
 
     def set_entropy(self, x, y, z, entropy):
         self.entropy.set(x,y,z, entropy)
@@ -71,7 +73,6 @@ class GridManager():
             for h in range(self.height):
                 for d in range(self.depth):
                     self.weighted_choices.set(w,h,d, np.asarray([[True, k, 1.0] for k in keys], dtype=float))
-                    self.debug_grid.set(w,h,d, np.asarray([True for _ in keys], dtype=float))
 
     def init_entropy(self, max_entropy: float):
         self.entropy.init_grid(max_entropy)

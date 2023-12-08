@@ -11,8 +11,9 @@ from queue import PriorityQueue
 from communicator import Communicator
 from collections import namedtuple
 from toy_examples import ToyExamples as Toy
-from animator import GridAnimator
+from animator import GridAnimator, Colour
 from time import time
+from side_properties import SideProperties as SP
 
 comm = Communicator()
 
@@ -45,6 +46,10 @@ class WFC:
     collapse_queue: PriorityQueue[Coll] = field(init=False)
     offsets: list[Offset] = field(init=False)
     prop_queue: Q[Prop] = field(default=Q(), init=False)
+    clusters: dict[(int,int,int), set] = field(init=False)
+    start_coord: Coord = field(default=Coord(0,0,0))
+
+    counter: int = field(init=False, default=0)
 
     def __post_init__(self):
         keys = np.asarray([*self.terminals.keys()])
@@ -58,14 +63,10 @@ class WFC:
         self.grid_man.init_entropy(self.max_entropy)
         self.grid_man.init_w_choices(keys)
 
-        # grid_extent_array = self.grid_extent.to_numpy_array()
         self.collapse_queue = PriorityQueue()
-        # self.add_all_collapse_queue()
-        start_coord = Coord(2,0,2)
-        self.collapse_queue.put(Coll(self.grid_man.entropy.get(*start_coord), start_coord))
+        self.collapse_queue.put(Coll(self.grid_man.entropy.get(*self.start_coord), self.start_coord))
 
-        # TODO: process seeds
-
+        self.clusters = {}
 
     def choice_intersection(self, a, b):
         return set(a).intersection(set(b))
@@ -77,15 +78,16 @@ class WFC:
                     self.collapse_queue.put(Coll(self.grid_man.entropy.get(x,y,z), (x,y,z)))
 
     def collapse(self, coll: Coll) -> (int, Coord):
-        # coll = self.collapse_queue.get()
-        # coll.entropy
         (x,y,z) = coll.coord
-        if self.grid_man.grid.get(x,y,z) < 0:
+        if not self.grid_man.grid.is_chosen(x,y,z):
             choice = self.choose(x,y,z)
-            
-            comm.communicate(self.grid_man.grid.print_xz)
 
+            # When a part of a big tile has been chosen, i.e. one of the sides of the chosen tiles is open, update the cluster.
+            self.update_cluster(x,y,z, choice)
+            
             self.inform_animator_choice(choice, coll.coord)
+            self.counter += 1
+            self.print_progress_update()
             return choice, Coord(x,y,z)
         else:
             raise NoChoiceException("Cell already chosen.")
@@ -94,6 +96,44 @@ class WFC:
    
     def _calc_entropy(self, n_choices):
         return np.log(n_choices) if n_choices > 0 else -1
+
+    def update_cluster(self, x, y, z, choice):
+        t = self.terminals[choice]
+        # When a terminal has been chosen, its cell is its own cluster.
+        self.clusters[(x,y,z)] = {(x,y,z)}
+        self.grid_man.cluster_grid.set(x, y, z, (x,y,z))
+
+        comm.communicate(f"Chosen cluster {(x,y,z)}")
+        pending_join: set = {(x,y,z)}
+
+        for o in self.offsets:
+            # Can only for a cluster with cells on the open sides.
+            if t.side_descriptor.get_from_offset(o) == SP.OPEN:
+                neighbour = Coord(x,y,z) + Coord(*o)
+                # Find all chosen neighbours that are already part of a different cluster, i.e. they have been chosen already.
+                if self.grid_man.grid.within_bounds(*neighbour) and self.grid_man.grid.is_chosen(*neighbour):
+                    comm.communicate(self.clusters)
+                    comm.communicate(f"Chosen neigh {neighbour}, current cluster: {self.clusters[(x,y,z)]}")
+                    # Join the clusters.
+                    pending_join.add(self.grid_man.cluster_grid.get(*neighbour))
+
+        order = []
+        for p in pending_join:
+            order.append((p, len(self.clusters[p])))
+
+        order.sort(key=lambda x: x[1])
+
+        (largest_cluster, _) = order[-1]
+        joined: set = set()
+        for (c, _) in order[:-1]:
+            joined = joined.union(self.clusters[c])
+            self.clusters.pop(c)
+
+        for j in joined:
+            self.grid_man.cluster_grid.set(*j, largest_cluster)
+        
+        self.clusters[largest_cluster] = self.clusters[largest_cluster].union(joined)
+                
 
     def choose(self, x, y, z):
         comm.communicate(f"\nChoosing cell: {x,y,z}")
@@ -109,6 +149,7 @@ class WFC:
         comm.communicate(f"Chosen: {choice}\n")
         self.grid_man.grid.set(x,y,z, choice)
         self.grid_man.set_entropy(x,y,z, self._calc_entropy(1))
+
         return choice
     
     def propagate(self):
@@ -154,7 +195,7 @@ class WFC:
                     continue
 
                 neigbour_w_choices[:,2][int(cs[0])]
-                for i in cs[1:]:
+                for i in cs:
                     neigbour_w_choices[:,2] += self.adj_matrix.get_adj_w(o, int(i))
 
                 comm.communicate(f"\tUpdated weights to: {neigbour_w_choices[:,2]}")
@@ -186,6 +227,11 @@ class WFC:
         if not isinstance(terminal, Void):
             anim.add_model(coord, extent=terminal.extent.whd(), colour=terminal.colour)
 
+    def print_progress_update(self, percentage_intervals: int = 5):
+        total_cells = self.grid_extent.x * self.grid_extent.y * self.grid_extent.z
+        progress = 100 * self.counter / total_cells
+        if progress % percentage_intervals == 0:
+            print(f"UPDATE: current progress is {progress}%. At cell count: {self.counter} out of {total_cells}")
 
 class NoChoiceException(Exception):
     def __init_subclass__(cls) -> None:
@@ -198,13 +244,13 @@ comm.silence()
 # terminals, adjs = Toy().example_slanted()
 # terminals, adjs = Toy().example_zebra_horizontal()
 # terminals, adjs = Toy().example_zebra_vertical()
-# terminals, adjs = Toy().example_zebra_horizontal_3()
-terminals, adjs = Toy().example_big_tiles()
+terminals, adjs = Toy().example_zebra_horizontal_3()
+# terminals, adjs = Toy().example_big_tiles()
 grid_extent = Coord(10,10,10)
-
+start_coord = grid_extent * Coord(0.5,0,0.5)
 
 start_time = time()
-wfc = WFC(terminals, adjs, grid_extent=grid_extent)
+wfc = WFC(terminals, adjs, grid_extent=grid_extent, start_coord=start_coord)
 wfc_init_time = time() - start_time
 print(f"WFC init: {wfc_init_time}")
 
@@ -229,11 +275,13 @@ while not wfc.collapse_queue.empty():
 
 run_time = time() - anim_init_time - wfc_init_time - start_time
 print(f"Running time: {run_time}")
-# wfc.adj_matrix.print_adj()
+for k in wfc.clusters.keys():
+    colour = np.random.rand(3)
+    cluster = wfc.clusters[k]
+    print(cluster)
+    # for cell in cluster:
+    #     anim.add_colour_mode(*cell, new_colour=Colour(*colour, 1))
+
 print(f"Total elapsed time: {time() - start_time}")
-# wfc.grid_man.grid.print_xz()
-# print(f"PTINDEX: {wfc.adj_matrix.parts_to_index_mapping}")
+
 anim.run()
-
-
-# NExt step: fill multiple cells at once depending on a part's extent.
