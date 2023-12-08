@@ -83,7 +83,7 @@ class WFC:
             choice = self.choose(x,y,z)
 
             # When a part of a big tile has been chosen, i.e. one of the sides of the chosen tiles is open, update the cluster.
-            self.update_cluster(x,y,z, choice)
+            # self.update_cluster(x,y,z, choice)
             
             self.inform_animator_choice(choice, coll.coord)
             self.counter += 1
@@ -97,42 +97,42 @@ class WFC:
     def _calc_entropy(self, n_choices):
         return np.log(n_choices) if n_choices > 0 else -1
 
-    def update_cluster(self, x, y, z, choice):
-        t = self.terminals[choice]
-        # When a terminal has been chosen, its cell is its own cluster.
-        self.clusters[(x,y,z)] = {(x,y,z)}
-        self.grid_man.cluster_grid.set(x, y, z, (x,y,z))
+    # def update_cluster(self, x, y, z, choice):
+    #     t = self.terminals[choice]
+    #     # When a terminal has been chosen, its cell is its own cluster.
+    #     self.clusters[(x,y,z)] = {(x,y,z)}
+    #     self.grid_man.cluster_grid.set(x, y, z, (x,y,z))
 
-        comm.communicate(f"Chosen cluster {(x,y,z)}")
-        pending_join: set = {(x,y,z)}
+    #     comm.communicate(f"Chosen cluster {(x,y,z)}")
+    #     pending_join: set = {(x,y,z)}
 
-        for o in self.offsets:
-            # Can only for a cluster with cells on the open sides.
-            if t.side_descriptor.get_from_offset(o) == SP.OPEN:
-                neighbour = Coord(x,y,z) + Coord(*o)
-                # Find all chosen neighbours that are already part of a different cluster, i.e. they have been chosen already.
-                if self.grid_man.grid.within_bounds(*neighbour) and self.grid_man.grid.is_chosen(*neighbour):
-                    comm.communicate(self.clusters)
-                    comm.communicate(f"Chosen neigh {neighbour}, current cluster: {self.clusters[(x,y,z)]}")
-                    # Join the clusters.
-                    pending_join.add(self.grid_man.cluster_grid.get(*neighbour))
+    #     for o in self.offsets:
+    #         # Can only for a cluster with cells on the open sides.
+    #         if t.side_descriptor.get_from_offset(o) == SP.OPEN:
+    #             neighbour = Coord(x,y,z) + Coord(*o)
+    #             # Find all chosen neighbours that are already part of a different cluster, i.e. they have been chosen already.
+    #             if self.grid_man.grid.within_bounds(*neighbour) and self.grid_man.grid.is_chosen(*neighbour):
+    #                 comm.communicate(self.clusters)
+    #                 comm.communicate(f"Chosen neigh {neighbour}, current cluster: {self.clusters[(x,y,z)]}")
+    #                 # Join the clusters.
+    #                 pending_join.add(self.grid_man.cluster_grid.get(*neighbour))
 
-        order = []
-        for p in pending_join:
-            order.append((p, len(self.clusters[p])))
+    #     order = []
+    #     for p in pending_join:
+    #         order.append((p, len(self.clusters[p])))
 
-        order.sort(key=lambda x: x[1])
+    #     order.sort(key=lambda x: x[1])
 
-        (largest_cluster, _) = order[-1]
-        joined: set = set()
-        for (c, _) in order[:-1]:
-            joined = joined.union(self.clusters[c])
-            self.clusters.pop(c)
+    #     (largest_cluster, _) = order[-1]
+    #     joined: set = set()
+    #     for (c, _) in order[:-1]:
+    #         joined = joined.union(self.clusters[c])
+    #         self.clusters.pop(c)
 
-        for j in joined:
-            self.grid_man.cluster_grid.set(*j, largest_cluster)
+    #     for j in joined:
+    #         self.grid_man.cluster_grid.set(*j, largest_cluster)
         
-        self.clusters[largest_cluster] = self.clusters[largest_cluster].union(joined)
+    #     self.clusters[largest_cluster] = self.clusters[largest_cluster].union(joined)
                 
 
     def choose(self, x, y, z):
