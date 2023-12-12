@@ -2,7 +2,7 @@ from terminal import Terminal, Void
 from boundingbox import BoundingBox as BB
 from side_properties import SidesDescriptor as SD, SideProperties as SP
 from adjacencies import Adjacency, AdjacencyAny, Relation as R
-from offsets import Offset
+from offsets import Offset, OffsetFactory
 from util_data import Cardinals as C, Dimensions as D, Colour
 
 class ToyExamples():
@@ -15,6 +15,34 @@ class ToyExamples():
             D.Y: {D.X, D.Z},
             D.Z: {D.Y, D.X},
         }
+    
+    def example_meta_tiles(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
+        terminals =  {
+            0: Terminal(BB.from_whd(2,1,3), symmetry_axes, side_desc, Colour(1,1,1,1)), # 2x3; white
+            1: Terminal(BB.from_whd(4,1,2), symmetry_axes, side_desc, Colour(0,0,0,1)), # 4x2; black
+            2: Void(BB.from_whd(1,1,1)),
+        }
+
+        adjacencies = {
+            Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
+
+            Adjacency(1, {R(0, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(1, {R(0, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(1, {R(0, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(1, {R(0, 1)}, Offset(*C.WEST.value), True),
+            
+            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
+        }
+
+        top_bottom_any = {AdjacencyAny(i, o, True, 1) for i in terminals for o in [Offset(*C.TOP.value), Offset(*C.BOTTOM.value)]}
+        void_any = {AdjacencyAny(2, o, True, 0.001) for o in OffsetFactory().get_offsets()} # Void may be placed next to anything
+        return terminals, adjacencies.union(top_bottom_any).union(void_any)
     
     def example_big_tiles(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
         terminals = {
@@ -91,7 +119,7 @@ class ToyExamples():
         return terminals, adjs.union(top_bottom_any)
 
     def example_zebra_horizontal(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
-        temrinals =  {
+        terminals =  {
             0: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(1,1,1,1)), # white
             1: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(0,0,0,1)), # black
         }
@@ -107,10 +135,10 @@ class ToyExamples():
             Adjacency(0, {R(1, 1)}, Offset(*C.TOP.value), True),
         }
 
-        return temrinals, adjs
+        return terminals, adjs
     
     def example_zebra_horizontal_3(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
-        temrinals =  {
+        terminals =  {
             0: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(1,1,1,1)), # white
             1: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(0,0,0,1)), # black
             2: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(1,1,0,1)), # yellow
@@ -131,10 +159,10 @@ class ToyExamples():
             Adjacency(2, {R(0, 1)}, Offset(*C.TOP.value), True),
         }
 
-        return temrinals, adjs
+        return terminals, adjs
 
     def example_zebra_vertical(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
-        temrinals =  {
+        terminals =  {
             0: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(0.7,0.7,0.7,1)), # white
             1: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(0.05,0.05,0.05,1)), # black
         }
@@ -150,7 +178,7 @@ class ToyExamples():
             Adjacency(0, {R(1, 1)}, Offset(*C.WEST.value), True),
         }
 
-        return temrinals, adjs
+        return terminals, adjs
 
     def example_slanted(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
 

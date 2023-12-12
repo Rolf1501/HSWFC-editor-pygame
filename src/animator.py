@@ -118,7 +118,7 @@ class Animator(ShowBase):
 
     def scale(self, model: NodePath, extent: Coord):
         """
-        Calculates the scalar required for the model such that the model covers grid/canvas cells equal to the extent.
+        Calculates the scalar required such that the model covers grid/canvas cells equal to the extent.
         """
         scalar_grid = self.scale_to_unit(model)
         scalar_extent = scalar_grid * extent
@@ -186,7 +186,6 @@ class GSAnimator(Animator):
         self.accept("m", self.show_all)
 
 class GridAnimator(Animator):
-
     def __init__(self, grid_w=20, grid_h=20, grid_d=5, unit_dims=Coord(1,1,1)):
         self.unit_dims = unit_dims
         lookat_point=Coord(grid_w, grid_h, grid_d).scaled(0.5)

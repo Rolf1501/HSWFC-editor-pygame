@@ -17,8 +17,9 @@ class Adjacency:
         self.symmetric = symmetric
 
 class AdjacencyAny(Adjacency):
-    def __init__(self, source: int, offset: Offset, symmetric: bool) -> None:
+    def __init__(self, source: int, offset: Offset, symmetric: bool, weight: float) -> None:
         super().__init__(source, {}, offset, symmetric)
+        self.weight = weight
 
 @dataclass
 class AdjacencyMatrix:
@@ -48,7 +49,11 @@ class AdjacencyMatrix:
             source_i = self.parts_to_index_mapping[adj.source]
             if isinstance(adj, AdjacencyAny):
                 self.ADJ[adj.offset][source_i] = self.get_full(True)
-                self.ADJ_W[adj.offset][source_i] = self.get_full(1)
+                self.ADJ_W[adj.offset][source_i] = self.get_full(adj.weight)
+                # Set the columns.
+                if adj.symmetric:
+                    self.ADJ[neg_offset][:, source_i] = True
+                    self.ADJ_W[neg_offset][:, source_i] = adj.weight
             else:
                 for neighbour in adj.allowed_neighbours:
                     neighbour_i = self.parts_to_index_mapping[neighbour.other]
