@@ -18,8 +18,8 @@ class ToyExamples():
     
     def example_meta_tiles(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
         terminals =  {
-            0: Terminal(BB.from_whd(2,1,3), symmetry_axes, side_desc, Colour(1,1,1,1)), # 2x3; white
-            1: Terminal(BB.from_whd(4,1,2), symmetry_axes, side_desc, Colour(0,0,0,1)), # 4x2; black
+            0: Terminal(BB.from_whd(2,1,3), symmetry_axes, side_desc, Colour(0.3,0.6,0.6,1)), # 2x3; cyan ish
+            1: Terminal(BB.from_whd(4,1,2), symmetry_axes, side_desc, Colour(0.8,0.3,0,1)), # 4x2; orangeish
             2: Void(BB.from_whd(1,1,1)),
         }
 

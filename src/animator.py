@@ -5,6 +5,7 @@ from coord import Coord
 from util_data import Colour
 from model import Part
 from queue import Queue as Q
+from numpy.random import random
 
 class Animator(ShowBase):
     def __init__(self, lookat_point = Coord(0,0,0), default_camera_pos=Coord(10,10,10), unit_dims: Coord=Coord(1,1,1)):
@@ -57,8 +58,8 @@ class Animator(ShowBase):
 
     def camera_lookat(self, up: Coord=Coord(0,1,0)):
         self.camera.look_at(self.lookat_point, up)
-        print(self.camera.get_pos())
-        print(self.camera.get_hpr())
+        # print(self.camera.get_pos())
+        # print(self.camera.get_hpr())
 
     def translate_camera(self, coord: Coord):
         self.camera.set_pos(Coord(*self.camera.get_pos()) + coord)
@@ -104,7 +105,7 @@ class Animator(ShowBase):
         
         scalar = self.scale(model, extent)
         model.set_scale(scalar)
-        model.set_pos(origin_coord)
+        model.set_pos(origin_coord + extent.scaled(0.5))
 
         model.set_material(self.make_material(colour))
 
@@ -157,7 +158,7 @@ class Animator(ShowBase):
 
     def show_model(self, key: int):
         model = self.get_model(key)
-        print(f"Show model at pos: {model.get_pos()}")
+        # print(f"Show model at pos: {model.get_pos()}")
         if model:
             self.models[key].show()
             return True
@@ -251,18 +252,24 @@ class GridAnimator(Animator):
 
         self.shown_model_index = 0
     
-    def add_model(self,  origin_coord: Coord, extent: Coord=Coord(1,1,1), path="parts/cube.egg", colour: Colour=Colour(1,1,0,1)):
+    def add_model(self,  origin_coord: Coord, extent: Coord=Coord(1,1,1), path="parts/cube.egg", colour: Colour=Colour(1,1,0,1), colour_variation: Colour=Colour(0.1,0.1,0.1,0)):
         """
         Adds a model placed on the corresponding grid/canvas cells.
         The model is added to a dictionary, so it can be modified later.
         The grid/canvas keeps a references the model via the model's key.
         """
-        # TODO: account for rotation of parts. Currently not applicable since the model's rotation is irrelevant.
-        _, new_key = self.make_model(origin_coord, extent, path, colour)
+
+        # Add some variation to make the parts distinguishable.
+        colour_v = Colour(colour.r + random() * colour_variation.r * self.rand_sign(), 
+                          colour.g + random() * colour_variation.g * self.rand_sign(), 
+                          colour.b + random() * colour_variation.b * self.rand_sign(),
+                          colour.a + random() * colour_variation.a * self.rand_sign())
+        _, new_key = self.make_model(origin_coord, extent, path, colour_v)
         # self.add_colour_mode(*origin_coord, colour)
         self.update_canvas(origin_coord, extent, new_key)
 
-
+    def rand_sign(self):
+        return 1 if random() < 0.5 else -1
     def show_next(self, pause=True):
         if pause:
             self.paused = True

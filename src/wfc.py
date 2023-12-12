@@ -84,22 +84,20 @@ class WFC:
     def collapse(self, coll: Collapse) -> (int, Coord):
         (x,y,z) = coll.coord
         if not self.grid_man.grid.is_chosen(x,y,z):
-            choices = self.choose(x,y,z)
+            choice_id, choices, choice_origin = self.choose(x,y,z)
 
             # When a part of a big tile has been chosen, i.e. one of the sides of the chosen tiles is open, update the cluster.
             # self.update_cluster(x,y,z, choice)
-            anim_is_informed = False
 
-            for choice in choices:
-                choice_id, choice_coord = choice
-                if choice_id in self.terminals.keys() and not anim_is_informed:
-                    self.inform_animator_choice(choice_id, choice_coord)
-                    anim_is_informed = True
+            if choice_id in self.terminals.keys():
+                self.inform_animator_choice(choice_id, choice_origin)
+
+            for _ in choices:
                 self.counter += 1
                 self.print_progress_update()
-                yield choice
-        # else:
-        #     raise NoChoiceException("Cell already chosen.")
+            return choice_id, choices
+        
+        return None, []
         # TODO: update the other cells since a chosen part can cover multiple cells.
         # TODO: consider the available area.
    
@@ -144,14 +142,16 @@ class WFC:
         comm.communicate(f"valids: {valids}")
         comm.communicate(f"Chosen: {choice} at location: {choice_origin}; Extent: {choice_extent}\n")
 
-        choice_origin_to_grid_coord = Coord(x,y,z) + Coord(*choice_origin) - choice_center
+        choice_origin_grid_coord = Coord(x,y,z) + Coord(*choice_origin) - choice_center
+        choice_coords = []
         for x_i in range(choice_extent.x):
             for y_i in range(choice_extent.y):
                 for z_i in range(choice_extent.z):
-                    target_in_grid = choice_origin_to_grid_coord + Coord(x_i, y_i, z_i)
-                    self.grid_man.grid.set(*target_in_grid, choice)
-                    self.grid_man.set_entropy(*target_in_grid, self._calc_entropy(1))
-                    yield int(choice), target_in_grid
+                    choice_grid_coord = choice_origin_grid_coord + Coord(x_i, y_i, z_i)
+                    self.grid_man.grid.set(*choice_grid_coord, choice)
+                    self.grid_man.set_entropy(*choice_grid_coord, self._calc_entropy(1))
+                    choice_coords.append(choice_grid_coord)
+        return choice, choice_coords, choice_origin_grid_coord
     
     def get_available_compatible_area(self, terminal_id: int, coord: Coord, extent: Coord):
         mask = Grid(extent.x * 2 - 1, extent.y * 2 - 1, extent.z * 2 - 1, default_fill_value=False)
@@ -292,7 +292,7 @@ comm.silence()
 # terminals, adjs = Toy().example_big_tiles()
 terminals, adjs = Toy().example_meta_tiles()
 
-grid_extent = Coord(30,1,30)
+grid_extent = Coord(12,3,8)
 # grid_extent = Coord(8,1,4)
 start_coord = grid_extent * Coord(0.5,0,0.5)
 start_coord = Coord(int(start_coord.x), int(start_coord.y), int(start_coord.z))
@@ -311,12 +311,11 @@ print("Running WFC")
 # TODO: can move this to a task in the animator. Allows for full control over the collapse queue progression.
 while not wfc.collapse_queue.empty():
     coll = wfc.collapse_queue.get()
-    choices = wfc.collapse(coll)
+    choice_id, choice_coords = wfc.collapse(coll)
 
-    for choice in choices:
-        choice_id, choice_coord = choice
-        comm.communicate(f"Adding to prop queue: {choice_id, choice_coord}")
-        wfc.prop_queue.put(Propagation([choice_id], choice_coord))
+    for coord in choice_coords:
+        comm.communicate(f"Adding to prop queue: {choice_id, coord}")
+        wfc.prop_queue.put(Propagation([choice_id], coord))
 
     wfc.propagate()
 
