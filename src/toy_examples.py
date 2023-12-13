@@ -125,14 +125,14 @@ class ToyExamples():
         }
 
         adjs = {
-            Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.TOP.value), True),
             Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
 
-            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
             Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
 
-            Adjacency(1, {R(0, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(0, {R(1, 1)}, Offset(*C.TOP.value), True),
+            Adjacency(1, {R(0, 1)}, Offset(*C.NORTH.value), False),
+            Adjacency(0, {R(1, 1)}, Offset(*C.NORTH.value), False),
         }
 
         return terminals, adjs
@@ -160,7 +160,30 @@ class ToyExamples():
         }
 
         return terminals, adjs
+    def example_zebra_vertical_3(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
+        terminals =  {
+            0: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(1,1,1,1)), # white
+            1: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(0,0,0,1)), # black
+            2: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(1,1,0,1)), # yellow
+        }
 
+        adjs = {
+            Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
+            # Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
+
+            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
+            # Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
+
+            Adjacency(2, {R(2, 1)}, Offset(*C.NORTH.value), True),
+            # Adjacency(2, {R(2, 1)}, Offset(*C.WEST.value), True),
+
+            Adjacency(1, {R(2, 1)}, Offset(*C.WEST.value), False),
+            Adjacency(0, {R(1, 1)}, Offset(*C.WEST.value), False),
+            Adjacency(2, {R(0, 1)}, Offset(*C.WEST.value), False),
+        }
+
+        return terminals, adjs
+    
     def example_zebra_vertical(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
         terminals =  {
             0: Terminal(BB.from_whd(1,1,1), symmetry_axes, side_desc, Colour(0.7,0.7,0.7,1)), # white
