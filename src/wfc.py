@@ -11,11 +11,8 @@ from queue import PriorityQueue
 from communicator import Communicator
 from collections import namedtuple
 from toy_examples import ToyExamples as Toy
-from animator import GridAnimator, Colour
 from time import time
-from side_properties import SideProperties as SP
-from boundingbox import BoundingBox as BB
-
+from animator import GridAnimator
 comm = Communicator()
 
 @dataclass
@@ -198,7 +195,7 @@ class WFC:
                                     origin = (x - xi, y - yi, z - zi)
                                     if origin in valid:
                                         valid.remove(origin)
-                                    if len(valid) == 0:
+                                    if not valid:
                                         return {}
         return valid
     
@@ -291,10 +288,12 @@ comm.silence()
 # terminals, adjs = Toy().example_zebra_horizontal_3()
 # terminals, adjs = Toy().example_zebra_vertical_3()
 # terminals, adjs = Toy().example_big_tiles()
-terminals, adjs = Toy().example_meta_tiles()
+# terminals, adjs = Toy().example_meta_tiles()
+# terminals, adjs = Toy().example_meta_tiles_2()
+terminals, adjs = Toy().example_meta_tiles_3()
 
 grid_extent = Coord(20,20,20)
-# grid_extent = Coord(8,1,4)
+# grid_extent = Coord(5,5,5)
 start_coord = grid_extent * Coord(0.5,0,0.5)
 start_coord = Coord(int(start_coord.x), int(start_coord.y), int(start_coord.z))
 

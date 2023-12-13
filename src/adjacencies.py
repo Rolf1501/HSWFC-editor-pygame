@@ -3,6 +3,7 @@ import numpy as np
 from offsets import OffsetFactory, Offset
 from bidict import bidict
 from collections import namedtuple
+from properties import Properties 
 
 class Relation(namedtuple("Relation", ["other","weight"])):
     def __init_subclass__(cls) -> None:
@@ -10,11 +11,12 @@ class Relation(namedtuple("Relation", ["other","weight"])):
     
 
 class Adjacency:
-    def __init__(self, source: int, allowed_neighbours: set[Relation], offset: Offset, symmetric: bool) -> None:
+    def __init__(self, source: int, allowed_neighbours: set[Relation], offset: Offset, symmetric: bool, properties: list[Properties]=[]) -> None:
         self.source = source
         self.allowed_neighbours = allowed_neighbours
         self.offset = offset
         self.symmetric = symmetric
+        self.properties = properties
 
 class AdjacencyAny(Adjacency):
     def __init__(self, source: int, offset: Offset, symmetric: bool, weight: float) -> None:

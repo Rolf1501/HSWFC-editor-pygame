@@ -47,7 +47,10 @@ class Grid(AbstractGrid):
 
     def is_chosen(self, x, y, z) -> bool:
         choice = self.get(x,y,z)
-        return choice > self.default_fill_value
+        if self.default_fill_value is not None:
+            return choice > self.default_fill_value
+        else:
+            return choice is not None
 
 @dataclass
 class GridManager():
@@ -60,7 +63,7 @@ class GridManager():
     cluster_grid: Grid = field(init=False)
 
     def __post_init__(self):
-        self.grid = Grid(self.width, self.height, self.depth, default_fill_value=-1)
+        self.grid = Grid(self.width, self.height, self.depth, default_fill_value=None)
         self.entropy = Grid(self.width, self.height, self.depth, default_fill_value=None)
         self.weighted_choices = Grid(self.width, self.height, self.depth, default_fill_value=None)
         self.cluster_grid = Grid(self.width, self.height, self.depth, default_fill_value=None)

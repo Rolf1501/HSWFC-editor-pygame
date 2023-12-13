@@ -15,13 +15,14 @@ class Animator(ShowBase):
 
         self.init_default_material()
         self.init_lights()
-        self.init_camera()
+        self.init_camera(default_camera_pos)
         self.init_camera_key_events()
         self.init_camera_mouse_events()
         self.disable_mouse()
         self.mouse_enabled = False
         self.models: dict[int, NodePath]  = {}
         self.lookat_point = lookat_point
+        self.default_camera_pos = default_camera_pos
 
         self.unit_dims = unit_dims # Specifies the dimensions of a single cell.
 
@@ -58,8 +59,6 @@ class Animator(ShowBase):
 
     def camera_lookat(self, up: Coord=Coord(0,1,0)):
         self.camera.look_at(self.lookat_point, up)
-        # print(self.camera.get_pos())
-        # print(self.camera.get_hpr())
 
     def translate_camera(self, coord: Coord):
         self.camera.set_pos(Coord(*self.camera.get_pos()) + coord)
@@ -81,9 +80,8 @@ class Animator(ShowBase):
         p_lnp2.set_pos(-50,-20,-50)
         self.render.set_light(p_lnp2)
 
-    def init_camera(self):
-        self.default_camera_pos = self.default_camera_pos
-        self.camera.set_pos(self.default_camera_pos)
+    def init_camera(self, camera_pos):
+        self.camera.set_pos(camera_pos)
         self.camera.set_hpr(0,0,0)
         self.camera_lookat()
 
@@ -100,20 +98,27 @@ class Animator(ShowBase):
         material.set_shininess(2)
         return material
     
-    def make_model(self,  origin_coord: Coord, extent: Coord=Coord(1,1,1), path="parts/cube.egg", colour: Colour=Colour(1,1,0,1)):
+    def make_model(self,  origin_coord: Coord, extent: Coord=Coord(1,1,1), path="parts/cube.egg", colour: Colour=Colour(1,1,0,1), compensate_extent: bool = True):
         model: NodePath = self.loader.loadModel(path)
 
         scalar = self.scale(model, extent)
         model.set_scale(scalar)
         model_center = origin_coord + extent.scaled(0.5)
+
         # In panda3d, z+ faces the camera. in numpy, z+ faces away from the camera. Make them both uniform, the z-direction is negated.
-        translation = model_center * Coord(1,1,-1)
+        translation = model_center if compensate_extent else origin_coord
+        translation = translation * Coord(1,1,-1)
         
         model.set_pos(translation)
 
+        material = self.make_material(colour)
+        
         # Override all existing materials to force the new material to take effect.
-        for mat in model.find_all_materials():
-            model.replace_material(mat, self.make_material(colour))
+        if not model.find_all_materials():
+            model.set_material(material)
+        else:
+            for mat in model.find_all_materials():
+                model.replace_material(mat, self.make_material(colour))
 
         model.reparentTo(self.render)
         model.hide()
@@ -171,9 +176,10 @@ class Animator(ShowBase):
         return False
 
 class GSAnimator(Animator):
-    def __init__(self, parts: dict[int, Part], unit_dims: Coord = Coord(1, 1, 1)):
-        super().__init__(unit_dims)
+    def __init__(self, parts: dict[int, Part], unit_dims: Coord = Coord(1, 1, 1), lookat_point = Coord(0,0,0)):
         self.parts = parts
+        self.lookat_point = lookat_point
+        super().__init__(unit_dims=unit_dims, lookat_point=lookat_point)
         self.add_parts()
         self.init_key_events()
 
@@ -181,7 +187,7 @@ class GSAnimator(Animator):
         for p in self.parts.values():
             p_origin = p.extent.center()
             p_extent = p.extent.whd()
-            self.make_model(p_origin, p_extent, colour=p.colour)
+            self.make_model(p_origin, p_extent, colour=p.colour, compensate_extent=False)
             print(f"Part: {p}")
 
     def show_all(self):
