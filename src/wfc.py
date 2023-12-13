@@ -289,10 +289,11 @@ comm.silence()
 # terminals, adjs = Toy().example_zebra_horizontal()
 # terminals, adjs = Toy().example_zebra_vertical()
 # terminals, adjs = Toy().example_zebra_horizontal_3()
+# terminals, adjs = Toy().example_zebra_vertical_3()
 # terminals, adjs = Toy().example_big_tiles()
 terminals, adjs = Toy().example_meta_tiles()
 
-grid_extent = Coord(12,3,8)
+grid_extent = Coord(20,20,20)
 # grid_extent = Coord(8,1,4)
 start_coord = grid_extent * Coord(0.5,0,0.5)
 start_coord = Coord(int(start_coord.x), int(start_coord.y), int(start_coord.z))
@@ -321,13 +322,8 @@ while not wfc.collapse_queue.empty():
 
 run_time = time() - anim_init_time - wfc_init_time - start_time
 print(f"Running time: {run_time}")
-for k in wfc.clusters.keys():
-    colour = np.random.rand(3)
-    cluster = wfc.clusters[k]
-    print(cluster)
-    # for cell in cluster:
-    #     anim.add_colour_mode(*cell, new_colour=Colour(*colour, 1))
 
 print(f"Total elapsed time: {time() - start_time}")
 wfc.grid_man.grid.print_xz()
+
 anim.run()
