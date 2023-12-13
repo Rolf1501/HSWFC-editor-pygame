@@ -76,7 +76,7 @@ class Animator(ShowBase):
         self.render.set_light(p_lnp)
 
         p_light2 = PointLight("p_light2")
-        p_light2.attenuation = (0.8,0,0)
+        p_light2.attenuation = (0.9,0,0)
         p_lnp2 = self.render.attach_new_node(p_light2)
         p_lnp2.set_pos(-50,-20,-50)
         self.render.set_light(p_lnp2)
@@ -91,7 +91,7 @@ class Animator(ShowBase):
         self.default_material = Material(name="default")
         self.default_material.set_ambient((0.1,0.1,0.1,1))
         self.default_material.set_diffuse((0,0.5,0.5,1))
-        self.default_material.set_shininess(10)
+        self.default_material.set_shininess(1)
 
     def make_material(self, colour: Colour):
         material = Material(name="default")
@@ -102,17 +102,25 @@ class Animator(ShowBase):
     
     def make_model(self,  origin_coord: Coord, extent: Coord=Coord(1,1,1), path="parts/cube.egg", colour: Colour=Colour(1,1,0,1)):
         model: NodePath = self.loader.loadModel(path)
-        
+
         scalar = self.scale(model, extent)
         model.set_scale(scalar)
-        model.set_pos(origin_coord + extent.scaled(0.5))
+        model_center = origin_coord + extent.scaled(0.5)
+        # In panda3d, z+ faces the camera. in numpy, z+ faces away from the camera. Make them both uniform, the z-direction is negated.
+        translation = model_center * Coord(1,1,-1)
+        
+        model.set_pos(translation)
 
-        model.set_material(self.make_material(colour))
+        # Override all existing materials to force the new material to take effect.
+        for mat in model.find_all_materials():
+            model.replace_material(mat, self.make_material(colour))
 
         model.reparentTo(self.render)
         model.hide()
+
         if colour.a < 1:
             model.set_transparency(True)
+        
         new_key = len(self.models.keys())
         self.models[new_key] = model
         return model, new_key
@@ -150,7 +158,6 @@ class Animator(ShowBase):
 
     def hide_model(self, key: int):
         model = self.get_model(key)
-        print(f"Hide model at pos: {model.get_pos()}")
         if model:
             self.models[key].hide()
             return True
@@ -158,7 +165,6 @@ class Animator(ShowBase):
 
     def show_model(self, key: int):
         model = self.get_model(key)
-        # print(f"Show model at pos: {model.get_pos()}")
         if model:
             self.models[key].show()
             return True
@@ -216,8 +222,9 @@ class GridAnimator(Animator):
         self.accept("p", self.toggle_pause)
         self.accept("arrow_right-up", self.show_next)
         self.accept("arrow_left-up", self.hide_previous)
-        self.accept("tab", self.toggle_next_colour_mode)
         self.accept("z", self.toggle_axes)
+        self.accept("c", self.hide_all)
+        self.accept("v", self.show_all)
     
     def create_axes(self, path="parts/cube.egg"):
         model_x: NodePath = self.loader.loadModel(path)
@@ -251,8 +258,13 @@ class GridAnimator(Animator):
             self.hide_model(k)
 
         self.shown_model_index = 0
+
+    def show_all(self):
+        for k in self.models.keys():
+            self.show_model(k)
+            self.shown_model_index = k
     
-    def add_model(self,  origin_coord: Coord, extent: Coord=Coord(1,1,1), path="parts/cube.egg", colour: Colour=Colour(1,1,0,1), colour_variation: Colour=Colour(0.1,0.1,0.1,0)):
+    def add_model(self,  origin_coord: Coord, extent: Coord=Coord(1,1,1), path="parts/1x1x1.glb", colour: Colour=Colour(1,1,0,1), colour_variation: Colour=Colour(0.1,0.1,0.1,0)):
         """
         Adds a model placed on the corresponding grid/canvas cells.
         The model is added to a dictionary, so it can be modified later.
@@ -265,6 +277,7 @@ class GridAnimator(Animator):
                           colour.b + random() * colour_variation.b * self.rand_sign(),
                           colour.a + random() * colour_variation.a * self.rand_sign())
         _, new_key = self.make_model(origin_coord, extent, path, colour_v)
+
         # self.add_colour_mode(*origin_coord, colour)
         self.update_canvas(origin_coord, extent, new_key)
 
