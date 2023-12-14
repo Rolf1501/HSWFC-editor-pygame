@@ -25,7 +25,7 @@ class Placement:
 class Propagation(namedtuple("Prop",["choices", "coord"])):
     def __init_subclass__(cls) -> None:
         return super().__init_subclass__()
-    
+      
 class Collapse(namedtuple("Coll", ["entropy", "coord"])):
     def __init_subclass__(cls) -> None:
         return super().__init_subclass__()
@@ -39,7 +39,6 @@ class WFC:
     init_seed: Coord = field(default=None)
     adj_matrix: AdjacencyMatrix = field(init=False, default=None)
     grid_man: GridManager = field(init=False)
-    propagation_queue: Q[int] = field(init=False)
     max_entropy: float = field(init=False)
     collapse_queue: PriorityQueue[Collapse] = field(init=False)
     offsets: list[Offset] = field(init=False)
@@ -81,22 +80,27 @@ class WFC:
     def collapse(self, coll: Collapse) -> (int, Coord):
         (x,y,z) = coll.coord
         if not self.grid_man.grid.is_chosen(x,y,z):
-            choice_id, choices, choice_origin = self.choose(x,y,z)
+            choice_id, choice_origin = self.choose(x,y,z)
+            choice_extent = self.terminals[choice_id].extent.whd()
 
-            # When a part of a big tile has been chosen, i.e. one of the sides of the chosen tiles is open, update the cluster.
-            # self.update_cluster(x,y,z, choice)
+            choice_coords = []
+            for x_i in range(choice_extent.x):
+                for y_i in range(choice_extent.y):
+                    for z_i in range(choice_extent.z):
+                        choice_grid_coord = choice_origin + Coord(x_i, y_i, z_i)
+                        self.grid_man.grid.set(*choice_grid_coord, choice_id)
+                        self.grid_man.set_entropy(*choice_grid_coord, self._calc_entropy(1))
+                        choice_coords.append(choice_grid_coord)
 
             if choice_id in self.terminals.keys():
                 self.inform_animator_choice(choice_id, choice_origin)
 
-            for _ in choices:
+            for _ in choice_coords:
                 self.counter += 1
                 self.print_progress_update()
-            return choice_id, choices
+            return choice_id, choice_coords
         
         return None, []
-        # TODO: update the other cells since a chosen part can cover multiple cells.
-        # TODO: consider the available area.
    
     def _calc_entropy(self, n_choices):
         return np.log(n_choices) if n_choices > 0 else -1         
@@ -140,15 +144,8 @@ class WFC:
         comm.communicate(f"Chosen: {choice} at location: {choice_origin}; Extent: {choice_extent}\n")
 
         choice_origin_grid_coord = Coord(x,y,z) + Coord(*choice_origin) - choice_center
-        choice_coords = []
-        for x_i in range(choice_extent.x):
-            for y_i in range(choice_extent.y):
-                for z_i in range(choice_extent.z):
-                    choice_grid_coord = choice_origin_grid_coord + Coord(x_i, y_i, z_i)
-                    self.grid_man.grid.set(*choice_grid_coord, choice)
-                    self.grid_man.set_entropy(*choice_grid_coord, self._calc_entropy(1))
-                    choice_coords.append(choice_grid_coord)
-        return choice, choice_coords, choice_origin_grid_coord
+        
+        return choice, choice_origin_grid_coord
     
     def get_available_compatible_area(self, terminal_id: int, coord: Coord, extent: Coord):
         mask = Grid(*self.get_extent_range(extent), default_fill_value=False)
@@ -292,8 +289,8 @@ class NoChoiceException(Exception):
 # terminals, adjs = Toy().example_big_tiles()
 # terminals, adjs = Toy().example_meta_tiles()
 # terminals, adjs = Toy().example_meta_tiles_2()
-# terminals, adjs = Toy().example_meta_tiles_3()
-terminals, adjs = Toy().example_meta_tiles_zebra_horizontal()
+terminals, adjs = Toy().example_meta_tiles_3()
+# terminals, adjs = Toy().example_meta_tiles_zebra_horizontal()
 
 # grid_extent = Coord(20,20,20)
 grid_extent = Coord(6,5,6)
