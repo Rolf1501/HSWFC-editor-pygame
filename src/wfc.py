@@ -220,7 +220,6 @@ class WFC:
 
                 # Which neighbours may be present given the offset and the chosen part.
                 remaining_choices = self.adj_matrix.get_full(False)
-                # comm.communicate(f"ADJ matrix for offset: {self.adj_matrix.ADJ[o]}")
                 
                 # Find the union of allowed neighbours terminals given the set of choices of the current cell.
                 for c in cs:
@@ -279,7 +278,7 @@ class NoChoiceException(Exception):
         return super().__init_subclass__()
 
 
-comm.silence()
+# comm.silence()
 
 
 # terminals, adjs = Toy().example_slanted()
@@ -290,7 +289,8 @@ comm.silence()
 # terminals, adjs = Toy().example_big_tiles()
 # terminals, adjs = Toy().example_meta_tiles()
 # terminals, adjs = Toy().example_meta_tiles_2()
-terminals, adjs = Toy().example_meta_tiles_3()
+# terminals, adjs = Toy().example_meta_tiles_3()
+terminals, adjs = Toy().example_meta_tiles_zebra_horizontal()
 
 grid_extent = Coord(20,20,20)
 # grid_extent = Coord(5,5,5)
