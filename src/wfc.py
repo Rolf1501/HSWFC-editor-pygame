@@ -151,7 +151,7 @@ class WFC:
         return choice, choice_coords, choice_origin_grid_coord
     
     def get_available_compatible_area(self, terminal_id: int, coord: Coord, extent: Coord):
-        mask = Grid(extent.x * 2 - 1, extent.y * 2 - 1, extent.z * 2 - 1, default_fill_value=False)
+        mask = Grid(*self.get_extent_range(extent), default_fill_value=False)
         mask_center = extent - Coord(1,1,1)
         for i in range(mask.width):
             for j in range(mask.height):
@@ -162,6 +162,9 @@ class WFC:
                         mask.set(*c, True)
         return mask
     
+    def get_extent_range(self, extent: Coord):
+        return Coord(extent.x * 2 - 1, extent.y * 2 - 1, extent.z * 2 - 1)
+
     def valid_origins(self, extent: Coord):
         return {(x,y,z) for z in range(extent.z) for y in range(extent.y) for x in range(extent.x)}
         
@@ -292,8 +295,8 @@ class NoChoiceException(Exception):
 # terminals, adjs = Toy().example_meta_tiles_3()
 terminals, adjs = Toy().example_meta_tiles_zebra_horizontal()
 
-grid_extent = Coord(20,20,20)
-# grid_extent = Coord(5,5,5)
+# grid_extent = Coord(20,20,20)
+grid_extent = Coord(6,5,6)
 start_coord = grid_extent * Coord(0.5,0,0.5)
 start_coord = Coord(int(start_coord.x), int(start_coord.y), int(start_coord.z))
 
