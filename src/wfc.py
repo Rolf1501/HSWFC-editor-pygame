@@ -12,7 +12,6 @@ from communicator import Communicator
 from collections import namedtuple
 from toy_examples import ToyExamples as Toy
 from time import time
-from animator import GridAnimator
 comm = Communicator()
 
 @dataclass
@@ -92,15 +91,15 @@ class WFC:
                         self.grid_man.set_entropy(*choice_grid_coord, self._calc_entropy(1))
                         choice_coords.append(choice_grid_coord)
 
-            if choice_id in self.terminals.keys():
-                self.inform_animator_choice(choice_id, choice_origin)
+            # if choice_id in self.terminals.keys():
+            #     self.inform_animator_choice(choice_id, choice_origin)
 
             for _ in choice_coords:
                 self.counter += 1
                 self.print_progress_update()
-            return choice_id, choice_coords
+            return choice_id, choice_coords, choice_origin
         
-        return None, []
+        return None, [], None
    
     def _calc_entropy(self, n_choices):
         return np.log(n_choices) if n_choices > 0 else -1         
@@ -258,10 +257,10 @@ class WFC:
                     self.collapse_queue.put(Collapse(self.grid_man.entropy.get(*n), n.to_tuple()))
     
     
-    def inform_animator_choice(self, choice, coord):
-        terminal = wfc.terminals[choice]
-        if not isinstance(terminal, Void):
-            anim.add_model(coord, extent=terminal.extent.whd(), colour=terminal.colour)
+    # def inform_animator_choice(self, choice, coord):
+    #     terminal = self.terminals[choice]
+    #     if not isinstance(terminal, Void):
+    #         anim.add_model(coord, extent=terminal.extent.whd(), colour=terminal.colour)
 
     def print_progress_update(self, percentage_intervals: int = 5):
         progress = 100 * self.counter * self.total_cells_inv
@@ -272,52 +271,3 @@ class NoChoiceException(Exception):
     def __init_subclass__(cls) -> None:
         return super().__init_subclass__()
 
-
-comm.silence()
-
-
-# terminals, adjs = Toy().example_slanted()
-# terminals, adjs = Toy().example_zebra_horizontal()
-# terminals, adjs = Toy().example_zebra_vertical()
-# terminals, adjs = Toy().example_zebra_horizontal_3()
-# terminals, adjs = Toy().example_zebra_vertical_3()
-# terminals, adjs = Toy().example_big_tiles()
-terminals, adjs = Toy().example_meta_tiles_fit_area()
-# terminals, adjs = Toy().example_meta_tiles_2()
-# terminals, adjs = Toy().example_meta_tiles()
-# terminals, adjs = Toy().example_meta_tiles_zebra_horizontal()
-
-grid_extent = Coord(20,20,20)
-# grid_extent = Coord(6,5,6)
-start_coord = grid_extent * Coord(0.5,0,0.5)
-start_coord = Coord(int(start_coord.x), int(start_coord.y), int(start_coord.z))
-
-start_time = time()
-wfc = WFC(terminals, adjs, grid_extent=grid_extent, start_coord=start_coord)
-wfc_init_time = time() - start_time
-print(f"WFC init: {wfc_init_time}")
-
-anim = GridAnimator(*grid_extent, unit_dims=Coord(1,1,1))
-anim_init_time = time() - start_time - wfc_init_time
-print(f"Anim init time: {anim_init_time}")
-
-print("Running WFC")
-
-# TODO: can move this to a task in the animator. Allows for full control over the collapse queue progression.
-while not wfc.collapse_queue.empty():
-    coll = wfc.collapse_queue.get()
-    choice_id, choice_coords = wfc.collapse(coll)
-
-    for coord in choice_coords:
-        comm.communicate(f"Adding to prop queue: {choice_id, coord}")
-        wfc.prop_queue.put(Propagation([choice_id], coord))
-
-    wfc.propagate()
-
-run_time = time() - anim_init_time - wfc_init_time - start_time
-print(f"Running time: {run_time}")
-
-print(f"Total elapsed time: {time() - start_time}")
-wfc.grid_man.grid.print_xz()
-
-anim.run()
