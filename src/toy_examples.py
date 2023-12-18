@@ -44,7 +44,7 @@ class ToyExamples():
         void_any = {AdjacencyAny(-1, o, True, 0.001) for o in OffsetFactory().get_offsets()} # Void may be placed next to anything
         return terminals, adjacencies.union(top_bottom_any).union(void_any)
     
-    def example_meta_tiles_3(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
+    def example_meta_tiles_fit_area(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
         terminals =  {
             0: Terminal(BB.from_whd(2,1,3), symmetry_axes, side_desc, Colour(0.3,0.6,0.6,1)), # 2x3; turquoise ish
             1: Terminal(BB.from_whd(4,1,2), symmetry_axes, side_desc, Colour(0.8,0.3,0,1)), # 4x2; orange ish

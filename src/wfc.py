@@ -170,8 +170,6 @@ class WFC:
         A neighbour is only valid if that neighbour is not yet chosen and if it may be covered by the part in question.
         """
         neighbour_grid_coord = coord + mask_offset
-        # if not self.grid_man.grid.within_bounds(*neighbour_grid_coord) or self.grid_man.grid.is_chosen(*neighbour_grid_coord):
-        #     return False
         
         choices = self.grid_man.weighted_choices.get(*neighbour_grid_coord)
         c_n = choices is not None
@@ -210,15 +208,12 @@ class WFC:
             for o in self.offsets:
                 n = Coord(int(x + o.x), int(y + o.y), int(z + o.z))
 
-                if not self.grid_man.grid.within_bounds(*n):
+                # No need to consider out of bounds or occupied neighbours.
+                if not self.grid_man.grid.within_bounds(*n) or self.grid_man.grid.is_chosen(*n):
                     continue
 
-                if self.grid_man.grid.is_chosen(*n):
-                    continue
-                
                 comm.communicate(f"Considering neighbour: {n} with choices {cs} at offset {o}")
 
-                # Which neighbours may be present given the offset and the chosen part.
                 remaining_choices = self.adj_matrix.get_full(False)
                 
                 # Find the union of allowed neighbours terminals given the set of choices of the current cell.
@@ -278,7 +273,7 @@ class NoChoiceException(Exception):
         return super().__init_subclass__()
 
 
-# comm.silence()
+comm.silence()
 
 
 # terminals, adjs = Toy().example_slanted()
@@ -287,13 +282,13 @@ class NoChoiceException(Exception):
 # terminals, adjs = Toy().example_zebra_horizontal_3()
 # terminals, adjs = Toy().example_zebra_vertical_3()
 # terminals, adjs = Toy().example_big_tiles()
-# terminals, adjs = Toy().example_meta_tiles()
+terminals, adjs = Toy().example_meta_tiles_fit_area()
 # terminals, adjs = Toy().example_meta_tiles_2()
-terminals, adjs = Toy().example_meta_tiles_3()
+# terminals, adjs = Toy().example_meta_tiles()
 # terminals, adjs = Toy().example_meta_tiles_zebra_horizontal()
 
-# grid_extent = Coord(20,20,20)
-grid_extent = Coord(6,5,6)
+grid_extent = Coord(20,20,20)
+# grid_extent = Coord(6,5,6)
 start_coord = grid_extent * Coord(0.5,0,0.5)
 start_coord = Coord(int(start_coord.x), int(start_coord.y), int(start_coord.z))
 
