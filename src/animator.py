@@ -10,11 +10,6 @@ class Animator(ShowBase):
         # Loading a config is required in order for the models in relative paths to be found.
         load_prc_file("./Config.prc")
 
-        self.init_default_material()
-        self.init_lights()
-        self.init_camera(default_camera_pos)
-        self.init_camera_key_events()
-        self.init_camera_mouse_events()
         self.disable_mouse()
         self.mouse_enabled = False
         self.models: dict[int, NodePath]  = {}
@@ -22,17 +17,15 @@ class Animator(ShowBase):
         self.default_camera_pos = default_camera_pos
 
         self.unit_dims = unit_dims # Specifies the dimensions of a single cell.
+        
+        self.init_default_material()
+        self.init_lights()
+        self.init_camera(default_camera_pos)
+        self.init_camera_key_events()
+        self.init_camera_mouse_events()
 
     def init_camera_mouse_events(self):
         self.accept("x", self.toggle_mouse_controls)
-
-    def toggle_mouse_controls(self):
-        if self.mouse_enabled:
-            self.disable_mouse()
-        else:
-            self.enable_mouse()
-        
-        self.mouse_enabled = not self.mouse_enabled
     
     def init_camera_key_events(self):
         # Camera translation
@@ -66,16 +59,6 @@ class Animator(ShowBase):
         # Camera lookat
         self.accept("l", self.camera_lookat)
 
-    def camera_lookat(self, up: Coord=Coord(0,1,0)):
-        self.camera.look_at(self.lookat_point, up)
-
-    def translate_camera(self, coord: Coord):
-        self.camera.set_pos(Coord(*self.camera.get_pos()) + coord)
-
-    def rotate_camera(self, coord: Coord):
-        Coord(*self.camera.get_hpr()) + coord
-        self.camera.set_hpr(Coord(*self.camera.get_hpr()) + coord)
-
     def init_lights(self):
         p_light = PointLight("p_light")
         p_light.attenuation = (0.5,0,0)
@@ -100,18 +83,33 @@ class Animator(ShowBase):
         self.default_material.set_diffuse((0,0.5,0.5,1))
         self.default_material.set_shininess(1)
 
+    # Toggles
+    def toggle_mouse_controls(self):
+        self.disable_mouse() if self.mouse_enabled else self.enable_mouse()
+        self.mouse_enabled = not self.mouse_enabled
+
+    def toggle_hidden(self, key: int):
+        model = self.get_model(key)
+        if model:
+            model.show() if model.is_hidden() else model.hide()
+
+    # Camera controls
+    def camera_lookat(self, up: Coord=Coord(0,1,0)):
+        self.camera.look_at(self.lookat_point, up)
+
+    def translate_camera(self, coord: Coord):
+        self.camera.set_pos(Coord(*self.camera.get_pos()) + coord)
+
+    def rotate_camera(self, coord: Coord):
+        Coord(*self.camera.get_hpr()) + coord
+        self.camera.set_hpr(Coord(*self.camera.get_hpr()) + coord)
+    
     def make_material(self, colour: Colour):
         material = Material(name="default")
         material.set_ambient((0.1,0.1,0.1,colour.a))
         material.set_diffuse(colour)
         material.set_shininess(2)
         return material
-    
-    def position_in_grid(self, model: NodePath, pos: Coord, extent: Coord):
-        # In panda3d, z+ faces the camera. in numpy, z+ faces away from the camera. Make them both uniform, the z-direction is negated.
-        pos_center = pos + extent.scaled(0.5)
-        pos_neg_z = pos_center * Coord(1,1,-1)
-        model.set_pos(pos_neg_z)
     
     def make_model(self,  origin_coord: Coord, extent: Coord=Coord(1,1,1), path="parts/cube.egg", colour: Colour=Colour(1,1,0,1)):
         model: NodePath = self.loader.loadModel(path)
@@ -139,6 +137,12 @@ class Animator(ShowBase):
         self.models[new_key] = model
         return model, new_key
 
+    def position_in_grid(self, model: NodePath, pos: Coord, extent: Coord):
+        # In panda3d, z+ faces the camera. in numpy, z+ faces away from the camera. Make them both uniform, the z-direction is negated.
+        pos_center = pos + extent.scaled(0.5)
+        pos_neg_z = pos_center * Coord(1,1,-1)
+        model.set_pos(pos_neg_z)
+
     def scale(self, model: NodePath, extent: Coord):
         """
         Calculates the scalar required such that the model covers grid/canvas cells equal to the extent.
@@ -161,14 +165,6 @@ class Animator(ShowBase):
             return self.models[key]
         else:
             return None
-    
-    def toggle_hidden(self, key: int):
-        model = self.get_model(key)
-        if model:
-            if model.is_hidden():
-                model.show()
-            else:
-                model.hide()
 
     def hide_model(self, key: int):
         model = self.get_model(key)
@@ -192,6 +188,9 @@ class GSAnimator(Animator):
         self.add_parts()
         self.init_key_events()
 
+    def init_key_events(self):
+        self.accept("m", self.show_all)
+
     def add_parts(self):
         for p in self.parts.values():
             p_origin = p.extent.center()
@@ -204,7 +203,5 @@ class GSAnimator(Animator):
             m.show()
             print(f"showing model {m} at {m.get_pos()}") 
 
-    def init_key_events(self):
-        self.accept("m", self.show_all)
 
 

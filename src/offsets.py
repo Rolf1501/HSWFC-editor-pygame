@@ -10,8 +10,7 @@ class Offset(namedtuple("Offset", ["x","y","z"])):
     @classmethod
     def from_numpy_array(cls, array: np.ndarray):
         assert(len(array) <= Offset.N_ATRRIBUTES)
-        # if len(array) <= Offset.N_ATRRIBUTES:
-        #     np.
+
         return cls(*array)
     
     def to_numpy_array(self):
@@ -23,25 +22,8 @@ class Offset(namedtuple("Offset", ["x","y","z"])):
     def scaled(self, scalar):
         return Offset(self.x * scalar, self.y * scalar, self.z * scalar)
 
-    # def to_cardinal(self):
-    #     if self.x > 0:
-    #         return C.EAST
-    #     elif self.x < 0:
-    #         return C.WEST
-    #     elif self.y 
-
-
-
 @dataclass
 class OffsetFactory:
-    # dimensions: int = field(default=3)
-    # is_cardinal: bool = field(True)
-    # offsets: np.ndarray = field(init=False)
-
-
-    # def __post_init__(self):
-    #     self.offsets = np.asmatrix(self.getOffsets(self.is_cardinal, self.dimensions))
-
     def get_offsets(self, dimensions: int = 3, cardinal: bool = True) -> list[Offset]:
         if dimensions > 3 or dimensions < 1:
             raise DimensionsNotSupported(f"Dimension should not be less than 1 and should not exceed 3. Got: {dimensions}")
@@ -60,10 +42,6 @@ class OffsetFactory:
             return offsets
         else:
             raise NotImplementedError("Offsets does not support non-cardinal offsets")
-        
-    # def get_cardinal_offsets_as_dict(self, dimensions: int = 2):
-
-
 
 class DimensionsNotSupported(Exception):
     def __init__(self, message):

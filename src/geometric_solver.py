@@ -6,7 +6,6 @@ from model import Model
 
 comm = C()
 
-
 class GeometricSolver:
     def __init__(self, mht: model_hierarchy_tree.MHTree, parts: dict[int, Part], full_model_tree: ModelTree):
         self.mht = mht
@@ -14,7 +13,9 @@ class GeometricSolver:
         self.full_model_tree = full_model_tree
 
     def process(self, node_id: int, processed: dict[int, bool]):
-
+        """
+        Recursively solves how the parts should be positioned relative to one another. 
+        """
         part = self.parts[node_id]
         part_info = (node_id, part.name)
         comm.communicate(f"Currently collapsing {part_info}...")

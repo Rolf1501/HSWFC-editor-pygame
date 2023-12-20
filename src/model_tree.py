@@ -19,6 +19,9 @@ class ModelTree(nx.DiGraph):
    
 
     def get_attachment_subtree(self, source: int, attachment: int) -> list[int]:
+        """
+        Returns a graph of all nodes attached to the attachment, but not the source.
+        """
         # Only one edge needs to be removed to create two disjoint sets, as a tree is acyclic.
         temp_model = self.to_undirected()
         if temp_model.has_edge(source, attachment):
@@ -27,9 +30,11 @@ class ModelTree(nx.DiGraph):
 
 
     def get_sibling_order(self):
-        # The sibling order is determined by which nodes other nodes depend on.
-        # Each link (u, v) is a dependency between nodes u and v, where v depends on u.
-        # The root is the that has no incoming links.
+        """
+        The sibling order is determined by which nodes other nodes depend on.
+        Each link (u, v) is a dependency between nodes u and v, where v depends on u.
+        The root is the that has no incoming links.
+        """
         g = self
         
         nodes = sorted(list(g.nodes), key=lambda n: g.in_degree[n])

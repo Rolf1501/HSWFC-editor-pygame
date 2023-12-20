@@ -10,8 +10,6 @@ import numpy as np
 from queue import PriorityQueue
 from communicator import Communicator
 from collections import namedtuple
-from toy_examples import ToyExamples as Toy
-from time import time
 comm = Communicator()
 
 @dataclass
@@ -58,8 +56,10 @@ class WFC:
 
         self.max_entropy = self._calc_entropy(len(keys))
         self.grid_man.init_entropy(self.max_entropy)
+
         if self.default_weights is None:
             self.default_weights = {k: 1 for k in self.terminals.keys()}
+        
         self.grid_man.init_w_choices(self.default_weights)
 
         self.collapse_queue = PriorityQueue()
@@ -70,12 +70,17 @@ class WFC:
         self.total_cells_inv = 1.0 / self.total_cells
 
     def collapse_once(self):
+        """
+        Performs a single collapse for the first next unchosen tile. 
+        Returns the chosen terminal id, covered cell coordinates and the origin coordinate of the placed tile.
+        """
         if not self.collapse_queue.empty():
             coll = self.collapse_queue.get()
             while self.grid_man.grid.is_chosen(*coll.coord):
                 coll = self.collapse_queue.get()
             choice_id, choice_coords, choice_origin = self.collapse(coll)
 
+            # If the collapse resulted in a success, the choice's impact has to be propagated.
             if choice_coords:
                 for coord in choice_coords:
                     comm.communicate(f"Adding to prop queue: {choice_id, coord}")
@@ -91,6 +96,9 @@ class WFC:
             self.propagate()
     
     def collapse(self, coll: Collapse) -> (int, Coord):
+        """
+        Collapses a the cell at the given coordinate. After making a choice, all covered cells are updated.
+        """
         (x,y,z) = coll.coord
         if not self.grid_man.grid.is_chosen(x,y,z):
             choice_id, choice_origin = self.choose(x,y,z)
@@ -110,19 +118,11 @@ class WFC:
             return choice_id, choice_coords, choice_origin
         
         return None, None, None
-    
-    def update_progress_counter(self, increment: int):
-        self.counter += increment
-        self.progress = 100 * self.counter * self.total_cells_inv
-        self.print_progress_update(self.progress)
-
-    def is_done(self):
-        return self.progress >= 100
-
-    def _calc_entropy(self, n_choices):
-        return np.log(n_choices) if n_choices > 0 else -1     
 
     def choose(self, x, y, z):
+        """
+        Considers all allowed tile placements for the given cell, such that the given cell is always covered.
+        """
         comm.communicate(f"\nChoosing cell: {x,y,z}")
         choices = self.grid_man.weighted_choices.get(x,y,z)
         choice_sets = {}
@@ -131,6 +131,7 @@ class WFC:
         choice_ids = choices[:,1]
         choice_weights = choices[:,2]
 
+        # For each allowed tile, check if it fits given the target cell's context.
         for c_i in range(len(choices)):
             choice = choice_ids[c_i]
             terminal_extent = self.terminals[choice].extent.whd()
@@ -148,14 +149,16 @@ class WFC:
         weights *= weight_sum
         comm.communicate(f"Weights: {weights}")
 
+        # Make a weighted decision given the set of choices that fit.
         choice = np.random.choice(choice_ids, p=weights)
 
         choice_origin_list = list(choice_sets[choice])
         choice_origin_index = np.random.randint(len(choice_origin_list))
 
+        # Set of coordinates relative to the chosen tile.
         choice_origin = choice_origin_list[choice_origin_index]
         choice_extent = self.terminals[choice].extent.whd()
-        choice_center = choice_extent - Coord(1,1,1)
+        choice_center = choice_extent - Coord(1,1,1) # Needed to determine what the origin coord of the placed tile is.
 
         comm.communicate(f"valids: {valids}")
         comm.communicate(f"Chosen: {choice}; Location: {x,y,z}; Origin: {choice_origin}; Extent: {choice_extent}\n")
@@ -165,6 +168,9 @@ class WFC:
         return choice, choice_origin_grid_coord
     
     def get_available_compatible_area(self, terminal_id: int, coord: Coord, extent: Coord):
+        """
+        Given the id and extent of a terminal, determines for each cell within reach whether they may be occupied by said terminal.
+        """
         mask = Grid(*self.get_extent_range(extent), default_fill_value=False)
         mask_center = extent - Coord(1,1,1)
         for i in range(mask.width):
@@ -177,9 +183,15 @@ class WFC:
         return mask
     
     def get_extent_range(self, extent: Coord):
+        """
+        The range depends on the extent. It returns a range such that all possible positions for the given extent can fit.
+        """
         return Coord(extent.x * 2 - 1, extent.y * 2 - 1, extent.z * 2 - 1)
 
     def valid_origins(self, extent: Coord):
+        """
+        Due to to the structure of the created mask for determining potential tile placements, the list of valid origins is limited to the region of the extent.
+        """
         return {(x,y,z) for z in range(extent.z) for y in range(extent.y) for x in range(extent.x)}
         
     def check_compatibility_neighbour(self, coord, mask_offset, terminal_id) -> bool:
@@ -197,8 +209,10 @@ class WFC:
         return False
     
     def find_valid_arrangement(self, mask: Grid, extent: Coord) -> set:
+        """
+        Finds the set of allowed origins of a tile through elimination.
+        """
         valid = self.valid_origins(extent)
-        # comm.communicate(f"Valid pre: {valid}")
         # TODO: optimize this naive brute-force approach.
         for x in range(mask.width):
             for y in range(mask.height):
@@ -215,6 +229,9 @@ class WFC:
         return valid
 
     def propagate_once(self):
+        """
+        Performs a single propagation. The affected cells depend on the instigator's extent.
+        """
         if not self.prop_queue.empty():
             cs, (x, y, z) = self.prop_queue.get()
 
@@ -288,11 +305,20 @@ class WFC:
     def get_prop_status(self, coord: Coord):
         return self.grid_man.weighted_choices.get(*coord)
     
-    # def inform_animator_choice(self, choice, coord):
-    #     terminal = self.terminals[choice]
-    #     if not isinstance(terminal, Void):
-    #         anim.add_model(coord, extent=terminal.extent.whd(), colour=terminal.colour)
+    def update_progress_counter(self, increment: int):
+        self.counter += increment
+        self.progress = 100 * self.counter * self.total_cells_inv
+        self.print_progress_update(self.progress)
+
+    def is_done(self):
+        return self.progress >= 100
 
     def print_progress_update(self, progress, percentage_intervals: int = 5):
         if progress % percentage_intervals == 0:
             print(f"STATUS: {progress}%. Processed {self.counter}/{self.total_cells} cells")
+
+    def _calc_entropy(self, n_choices):
+        """
+        Private method for calculating entropy. Entropy is the log of the number of choices.
+        """
+        return np.log(n_choices) if n_choices > 0 else -1

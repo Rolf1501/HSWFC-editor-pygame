@@ -2,12 +2,11 @@ from animator import Animator
 from communicator import Communicator
 from coord import Coord
 from grid import Grid
-from terminal import Void
 from toy_examples import ToyExamples as Toy
-from wfc import WFC, Propagation
+from wfc import WFC
 
 from panda3d.core import NodePath
-from util_data import Colour, Dimensions
+from util_data import Colour
 from queue import Queue as Q
 from numpy.random import random
 from time import time
@@ -115,7 +114,6 @@ class WFCAnimator(Animator):
         else:
             comm.communicate("WFC is already done")
 
-            
     def mouse_select(self):
         if base.mouseWatcherNode.has_mouse():
             mouse_pos = base.mouseWatcherNode.get_mouse()
@@ -138,8 +136,6 @@ class WFCAnimator(Animator):
                 comm.communicate(f"Picked coord: {coord}; prop status: {self.wfc.get_prop_status(coord)}")
         return task.cont
     
-    
-
     def create_grid(self, path="parts/cube.egg"):
         for x in range(self.info_grid.width):
             for y in range(self.info_grid.height):
@@ -159,11 +155,7 @@ class WFCAnimator(Animator):
                     cell.reparent_to(self.render)
                     self.info_grid.set(x,y,z, cell)
     
-    def create_axes(self, path="parts/cube.egg"):
-        # def create_axis(diameter_scalar, length_scalar, dimension: Dimensions, path, colour):
-        #     model: NodePath = self.loader.loadModel(path)
-        #     model.set_pos()
-            
+    def create_axes(self, path="parts/cube.egg"):           
         model_x: NodePath = self.loader.loadModel(path)
         model_y: NodePath = self.loader.loadModel(path)
         model_z: NodePath = self.loader.loadModel(path)
@@ -234,23 +226,6 @@ class WFCAnimator(Animator):
 
     def add_colour_mode(self, x, y, z, new_colour: Colour):
         self.colours.get(x, y, z).put(self.make_material(new_colour))
-
-    def to_next_colour_mode(self, x, y, z):
-        key = self.canvas.get(x,y,z)
-        model = self.models[key]
-
-        # Save current material colour
-        old_colour = model.get_material()
-        
-        new_colour = self.colours.get(x, y, z).get()
-        model.set_material(new_colour)
-        self.colours.get(x, y, z).put(old_colour)
-
-    def toggle_next_colour_mode(self):
-        for x in range(self.colours.width):
-            for y in range(self.colours.height):
-                for z in range(self.colours.depth):
-                    self.to_next_colour_mode(x,y,z)
 
     def play(self, task):
         if self.delta_acc >= self.step_size:

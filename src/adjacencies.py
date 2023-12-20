@@ -8,7 +8,6 @@ from properties import Properties
 class Relation(namedtuple("Relation", ["other","weight"])):
     def __init_subclass__(cls) -> None:
         return super().__init_subclass__()
-    
 
 class Adjacency:
     def __init__(self, source: int, allowed_neighbours: set[Relation], offset: Offset, symmetric: bool, properties: list[Properties]=[]) -> None:
@@ -43,7 +42,6 @@ class AdjacencyMatrix:
             self.ADJ[offset] = np.full((n_parts, n_parts), False)
             self.ADJ_W[offset] = np.full((n_parts, n_parts), 0.0)
         self.allow_adjacencies(self.adjacencies)
-
 
     def allow_adjacencies(self, adjs: set[Adjacency]):
         for adj in adjs:

@@ -69,17 +69,6 @@ edges = [
     mht.MHEdge(5, 8)
 ]
 
-# Links specifying the relations between parts. Order independent.
-# Each link follows: (source, attachment, side of source the attachment should face, [props])
-
-# links = [
-#     mht.MHLink(0, 1, mht.Cardinals.WEST,
-#                [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.X)]),
-#     mht.MHLink(0, 2, mht.Cardinals.EAST,
-#                [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.X)]),
-# ]
-
-
 links = [
     mht.MHLink(0, 1, mht.Cardinals.WEST,
                [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Z)]),
@@ -101,7 +90,9 @@ full_model_tree = ModelTree.from_parts(parts, links)
 
 
 def fit_canvas(parts: dict[int, Part]):
-    # Normalize all parts' bounding boxes to fit the canvas.
+    """
+    Normalize all parts' bounding boxes to fit the canvas.
+    """
     fit_parts = deepcopy(parts)
     minx = MAX
     miny = MAX
@@ -121,8 +112,10 @@ def fit_canvas(parts: dict[int, Part]):
     return fit_parts
 
 
-# Convert cardinals to canvas specific coordinates.
 def cardinal_to_normal_coord(card: Cardinals) -> Coord:
+    """
+    Convert cardinals to canvas specific coordinates.
+    """
     if card == Cardinals.NORTH:
         return Coord(0, -1)
     elif card == Cardinals.EAST:
@@ -151,7 +144,7 @@ process_log: list[ProcessState] = []
 
 
 ##########################
-###   MAIN GAME LOOP   ###
+###   MAIN LOOP   ###
 ##########################
 
 start_next = True

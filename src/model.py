@@ -65,9 +65,6 @@ class Model:
             bb.minz = min(part_bb.minz, bb.minz)
             bb.maxz = max(part_bb.maxz, bb.maxz)
 
-        # if container.can_contain(bb):
-        #     translation = container.min_coord() - bb.min_coord()
-        # else:
         translation = container.center() - bb.center()
         for k in self.parts:
             self.parts[k].extent.translate(translation)
@@ -81,6 +78,9 @@ class Model:
         return part.extent.translate(part.translation)
 
     def _determine_adjacency_translations(self):
+        """
+        Computes and propagates the required translations to make parts adhere to their adjacency constraints
+        """
         for l in self.links:
             if l.adjacency is not None:
                 t = self._adjacency_translation(l.source, l.attachment, l.adjacency)
@@ -88,6 +88,9 @@ class Model:
                     self.parts[n].translation += t
 
     def _determine_property_translations(self):
+        """
+        Computes the translations required to make parts adhere to their properties.
+        """
         for l in self.links:
             if l.adjacency is not None:
                 for p in l.properties:
@@ -97,6 +100,9 @@ class Model:
                             self.parts[n].translation += t
 
     def _adjacency_translation(self, source_id: int, attachment_id: int, adjacency: Cardinals, relative_adjacency=True):
+        """
+        Calculates the translation required to make the attachment adjacent to the source for the given adjacency side.
+        """
         s_extent = self.parts[source_id].extent
         a_extent = self.parts[attachment_id].extent
 
@@ -114,7 +120,9 @@ class Model:
         return translation
 
     def _determine_final_rotations(self):
-        # Determine final rotations of all parts.
+        """
+        Determine final rotations of all parts through propagating changes.
+        """
         rotation_diff = 0
         for l in self.links:
             subtree_nodes = self.model_subtrees_memoi[(l.source, l.attachment)]
@@ -149,6 +157,9 @@ class Model:
             self.parts[k].extent = self.rotate_part_bb(self.parts[k].extent, self.parts[k].rotation, self.parts[k].up)
 
     def rotate_part_bb(self, bb: BB, rotation: int, up: Cardinals, origin: Coord = Coord(0, 0, 0)) -> BB:
+        """
+        Rotates a single part around the given origin.
+        """
         # rotation: [[cos a, -sin a], [sin a, cos a]]  [x, y]
         # rotated vector: (x * cos a - y * sin a), (x * sin a + y * cos a)
         rot_matrix = self._rotation_matrix(rotation, Cardinals.cardinal_to_dimension(up))
