@@ -71,11 +71,12 @@ class GridManager():
     def set_entropy(self, x, y, z, entropy):
         self.entropy.set(x,y,z, entropy)
 
-    def init_w_choices(self, keys):
+    def init_w_choices(self, default_weights):
+        default_choices = [[True, k, default_weights[k]] for k in default_weights]
         for w in range(self.width):
             for h in range(self.height):
                 for d in range(self.depth):
-                    self.weighted_choices.set(w,h,d, np.asarray([[True, k, 1.0] for k in keys], dtype=float))
+                    self.weighted_choices.set(w,h,d, np.asarray(default_choices, dtype=float))
 
     def init_entropy(self, max_entropy: float):
         self.entropy.init_grid(max_entropy)

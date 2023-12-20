@@ -1,4 +1,3 @@
-from typing_extensions import SupportsIndex
 import numpy as np
 from collections import namedtuple
 
@@ -15,7 +14,12 @@ class Coord(namedtuple("Coord", ["x","y","z"])):
         return Coord(self.x * other.x, self.y * other.y, self.z * other.z)
     
     def __repr__(self) -> str:
-        return f"<Coord {self.x}, {self.y}, {self.z}>"
+        return f"<{self.x}, {self.y}, {self.z}>"
+    
+    @classmethod
+    def from_string(self, string: str):
+        xyz = string.split(",")
+        return Coord(float(xyz[0]), float(xyz[1]), float(xyz[2])) if len(xyz) == 3 else None
     
     @staticmethod
     def abs_diff(this, that):
@@ -42,3 +46,6 @@ class Coord(namedtuple("Coord", ["x","y","z"])):
     
     def abs_diff(self, other):
         return Coord(abs(self.x - other.x), abs(self.y - other.y), abs(self.z - other.z))
+    
+    def to_coord_string(self):
+        return f"{self.x},{self.y},{self.z}"

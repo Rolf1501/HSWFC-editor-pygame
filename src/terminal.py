@@ -15,5 +15,6 @@ class Terminal:
     unique_orientations: int = field(init=False)
 
 class Void(Terminal):
-    def __init__(self, extent: BB):
+    def __init__(self, extent: BB, colour: Colour=None):
         self.extent = extent
+        self.colour = colour

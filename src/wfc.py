@@ -42,8 +42,10 @@ class WFC:
     collapse_queue: PriorityQueue[Collapse] = field(init=False)
     offsets: list[Offset] = field(init=False)
     prop_queue: Q[Propagation] = field(default=Q(), init=False)
-    clusters: dict[(int,int,int), set] = field(init=False)
     start_coord: Coord = field(default=Coord(0,0,0))
+    continue_collapse: bool = field(default=True)
+    default_weights: dict[int, list[float]] = field(default=None)
+    progress: float = field(default=0)
 
     counter: int = field(init=False, default=0)
 
@@ -56,26 +58,38 @@ class WFC:
 
         self.max_entropy = self._calc_entropy(len(keys))
         self.grid_man.init_entropy(self.max_entropy)
-        self.grid_man.init_w_choices(keys)
+        if self.default_weights is None:
+            self.default_weights = {k: 1 for k in self.terminals.keys()}
+        self.grid_man.init_w_choices(self.default_weights)
 
         self.collapse_queue = PriorityQueue()
         self.collapse_queue.put(Collapse(self.grid_man.entropy.get(*self.start_coord), self.start_coord))
-
-        self.clusters = {}
 
         # For progress updates.
         self.total_cells = self.grid_extent.x * self.grid_extent.y * self.grid_extent.z
         self.total_cells_inv = 1.0 / self.total_cells
 
-    def choice_intersection(self, a, b):
-        return set(a).intersection(set(b))
+    def collapse_once(self):
+        if not self.collapse_queue.empty():
+            coll = self.collapse_queue.get()
+            while self.grid_man.grid.is_chosen(*coll.coord):
+                coll = self.collapse_queue.get()
+            choice_id, choice_coords, choice_origin = self.collapse(coll)
 
-    def add_all_collapse_queue(self):
-        for x in range(self.grid_extent.x):
-            for y in range(self.grid_extent.y):
-                for z in range(self.grid_extent.z):
-                    self.collapse_queue.put(Collapse(self.grid_man.entropy.get(x,y,z), (x,y,z)))
-
+            if choice_coords:
+                for coord in choice_coords:
+                    comm.communicate(f"Adding to prop queue: {choice_id, coord}")
+                    self.prop_queue.put(Propagation([choice_id], coord))
+                self.propagate()
+                if choice_id in self.terminals.keys():
+                    return choice_id, choice_coords, choice_origin
+        return None, None, None
+    
+    def collapse_automatic(self):
+        while not self.collapse_queue.empty():
+            self.collapse_once()
+            self.propagate()
+    
     def collapse(self, coll: Collapse) -> (int, Coord):
         (x,y,z) = coll.coord
         if not self.grid_man.grid.is_chosen(x,y,z):
@@ -91,18 +105,22 @@ class WFC:
                         self.grid_man.set_entropy(*choice_grid_coord, self._calc_entropy(1))
                         choice_coords.append(choice_grid_coord)
 
-            # if choice_id in self.terminals.keys():
-            #     self.inform_animator_choice(choice_id, choice_origin)
-
             for _ in choice_coords:
-                self.counter += 1
-                self.print_progress_update()
+                self.update_progress_counter(1)
             return choice_id, choice_coords, choice_origin
         
-        return None, [], None
-   
+        return None, None, None
+    
+    def update_progress_counter(self, increment: int):
+        self.counter += increment
+        self.progress = 100 * self.counter * self.total_cells_inv
+        self.print_progress_update(self.progress)
+
+    def is_done(self):
+        return self.progress >= 100
+
     def _calc_entropy(self, n_choices):
-        return np.log(n_choices) if n_choices > 0 else -1         
+        return np.log(n_choices) if n_choices > 0 else -1     
 
     def choose(self, x, y, z):
         comm.communicate(f"\nChoosing cell: {x,y,z}")
@@ -140,7 +158,7 @@ class WFC:
         choice_center = choice_extent - Coord(1,1,1)
 
         comm.communicate(f"valids: {valids}")
-        comm.communicate(f"Chosen: {choice} at location: {choice_origin}; Extent: {choice_extent}\n")
+        comm.communicate(f"Chosen: {choice}; Location: {x,y,z}; Origin: {choice_origin}; Extent: {choice_extent}\n")
 
         choice_origin_grid_coord = Coord(x,y,z) + Coord(*choice_origin) - choice_center
         
@@ -180,7 +198,7 @@ class WFC:
     
     def find_valid_arrangement(self, mask: Grid, extent: Coord) -> set:
         valid = self.valid_origins(extent)
-        comm.communicate(f"Valid pre: {valid}")
+        # comm.communicate(f"Valid pre: {valid}")
         # TODO: optimize this naive brute-force approach.
         for x in range(mask.width):
             for y in range(mask.height):
@@ -195,12 +213,9 @@ class WFC:
                                     if not valid:
                                         return {}
         return valid
-    
-    def propagate(self):
-        # Find cells that may be adjacent given the choice.
-        # Propagate that info to neighbours of the current cell.
-        # Repeat until there is no change.
-        while not self.prop_queue.empty():
+
+    def propagate_once(self):
+        if not self.prop_queue.empty():
             cs, (x, y, z) = self.prop_queue.get()
 
             comm.communicate(f"\nStarting propagation from: {cs, x, y, z}")
@@ -223,7 +238,7 @@ class WFC:
                 neigbour_w_choices = self.grid_man.weighted_choices.get(*n)
                 pre = np.asarray(neigbour_w_choices[:,0], dtype=bool)
 
-                comm.communicate(f"Checking intersection: \t{pre} and {remaining_choices}")
+                # comm.communicate(f"Checking intersection: \t{pre} and {remaining_choices}")
                 post = pre & remaining_choices
 
                 if sum(post) == 0:
@@ -233,7 +248,7 @@ class WFC:
                 for i in cs:
                     neigbour_w_choices[:,2] += self.adj_matrix.get_adj_w(o, int(i))
 
-                comm.communicate(f"\tUpdated weights to: {neigbour_w_choices[:,2]}")
+                # comm.communicate(f"\tUpdated weights to: {neigbour_w_choices[:,2]}")
                 if np.any(pre != post):
                     comm.communicate(f"\tUpdated choices to: {post}")
                     neigbour_w_choices[:,0] = post
@@ -249,25 +264,35 @@ class WFC:
                         continue
                     self.prop_queue.put(Propagation(neighbour_w_choices_i, n.to_tuple()))
 
+                    # Output the changed neighbor's location.
+                    yield n
+
                     # If only one choice remains, trivially collapse.
-                    if sum(post) == 1:
-                        self.collapse(Collapse(self.grid_man.entropy.get(*n), Coord(*n)))
+                    # if sum(post) == 1:
+                        # self.collapse_queue.put(Collapse(self.grid_man.entropy.get(*n), Coord(*n)))
+                        # self.collapse(Collapse(self.grid_man.entropy.get(*n), Coord(*n)))
+                    
                 
                 if not self.grid_man.grid.is_chosen(*n):
                     self.collapse_queue.put(Collapse(self.grid_man.entropy.get(*n), n.to_tuple()))
-    
+
+    def propagate(self):
+        # Find cells that may be adjacent given the choice.
+        # Propagate that info to neighbours of the current cell.
+        # Repeat until there is no change.
+        while not self.prop_queue.empty():
+            changed_cells = self.propagate_once()
+            for cell in changed_cells:
+                comm.communicate(f"Affected by prop: {cell}")
+            
+    def get_prop_status(self, coord: Coord):
+        return self.grid_man.weighted_choices.get(*coord)
     
     # def inform_animator_choice(self, choice, coord):
     #     terminal = self.terminals[choice]
     #     if not isinstance(terminal, Void):
     #         anim.add_model(coord, extent=terminal.extent.whd(), colour=terminal.colour)
 
-    def print_progress_update(self, percentage_intervals: int = 5):
-        progress = 100 * self.counter * self.total_cells_inv
+    def print_progress_update(self, progress, percentage_intervals: int = 5):
         if progress % percentage_intervals == 0:
             print(f"STATUS: {progress}%. Processed {self.counter}/{self.total_cells} cells")
-
-class NoChoiceException(Exception):
-    def __init_subclass__(cls) -> None:
-        return super().__init_subclass__()
-

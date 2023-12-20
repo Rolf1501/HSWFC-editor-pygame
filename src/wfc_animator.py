@@ -11,6 +11,7 @@ from util_data import Colour, Dimensions
 from queue import Queue as Q
 from numpy.random import random
 from time import time
+from panda3d.core import CollisionHandlerQueue, CollisionTraverser, CollisionNode, CollisionRay, GeomNode
 
 comm = Communicator()
 
@@ -28,22 +29,40 @@ class WFCAnimator(Animator):
         self.canvas = Grid(grid_w, grid_h, grid_d, default_fill_value=-1)
         self.colours = Grid(grid_w, grid_h, grid_d, default_fill_value=Q())
         self.info_grid = Grid(grid_w, grid_h, grid_d, default_fill_value=None)
-        self.cell_to_grid_coord = {}
 
         self.shown_model_index = 0
 
         self.manual()
+        
         self.delta_acc = 0
+        self.delta_collapse = 0
+
+        self.hover_mode = False
 
         self.axis_system = self.create_axes()
 
+        self.collision_traverser = CollisionTraverser()
+        self.collision_handler_queue = CollisionHandlerQueue()
+
         self.init_info_grid()
         self.init_key_events()
+        self.init_mouse_events()
         self.init_tasks()
+
+    def init_mouse_events(self):
+        self.picker_node = CollisionNode('mouse_ray')
+        pickerNP = self.camera.attach_new_node(self.picker_node)
+        self.picker_node.set_from_collide_mask(GeomNode.get_default_collide_mask())
+        self.picker_ray = CollisionRay()
+        self.picker_node.addSolid(self.picker_ray)
+        self.collision_traverser.add_collider(pickerNP, self.collision_handler_queue)
+        self.currently_picked_coord = None
+        self.accept("mouse1", self.mouse_select)
 
     def init_tasks(self):
         self.task_mgr.add(self.play, "play")
         self.task_mgr.add(self.wfc_collapse_once, "collapse")
+        self.task_mgr.add(self.prop_info_hover, "prop_info")
 
     def init_key_events(self):
         self.accept("p", self.toggle_paused)
@@ -52,8 +71,9 @@ class WFCAnimator(Animator):
         self.accept("z", self.toggle_axes)
         self.accept("c", self.hide_all)
         self.accept("v", self.show_all)
-        self.accept("space", self.toggle_collapse_once)
-        self.accept("shift-space", self.toggle_collapse_repeat)
+        self.accept("space", self.enable_collapse_once)
+        self.accept("space-repeat", self.enable_collapse_once, [0.05])
+        self.accept("1", self.toggle_hover)
 
     def init_info_grid(self):
         self.create_grid()
@@ -76,11 +96,49 @@ class WFCAnimator(Animator):
     def toggle_collapse_once(self):
         self.collapse_once = not self.collapse_once
         self.collapse_repeat = False
+        comm.communicate(f"Collapse once turned {'Off' if not self.collapse_repeat else 'On'}.")
+    
+    def toggle_hover(self):
+        self.hover_mode = not self.hover_mode
 
-    def toggle_collapse_repeat(self):
-        comm.communicate("Toggled collapse repeat")
-        self.collapse_repeat = not self.collapse_repeat
-        self.collapse_once = False
+    def enable_collapse_once(self, step_size=0):
+        if not self.wfc.is_done():
+            if not self.collapse_once: 
+                if self.delta_collapse >= step_size:
+                    self.collapse_once = True
+                    self.collapse_repeat = False
+                    comm.communicate(f"Collapse once turned {'Off' if not self.collapse_repeat else 'On'}.")
+                    self.delta_collapse = 0
+                else:
+                    dt = self.clock.get_dt()
+                    self.delta_collapse += dt
+        else:
+            comm.communicate("WFC is already done")
+
+            
+    def mouse_select(self):
+        if base.mouseWatcherNode.has_mouse():
+            mouse_pos = base.mouseWatcherNode.get_mouse()
+            self.picker_ray.set_from_lens(base.camNode, mouse_pos.x, mouse_pos.y)
+            self.collision_traverser.traverse(self.render)
+            if self.collision_handler_queue.get_num_entries() > 0:
+                self.collision_handler_queue.sort_entries()
+                picked_cell = self.collision_handler_queue.get_entry(0).get_into_node_path()
+                coord = Coord.from_string(picked_cell.get_net_tag("cell"))
+                if coord != self.currently_picked_coord:
+                    comm.communicate(f"selected model: {picked_cell} at position: {coord}")
+                    self.currently_picked_coord = coord
+                    return coord
+        return None
+
+    def prop_info_hover(self, task):
+        if self.hover_mode:
+            coord = self.mouse_select()
+            if coord:
+                comm.communicate(f"Picked coord: {coord}; prop status: {self.wfc.get_prop_status(coord)}")
+        return task.cont
+    
+    
 
     def create_grid(self, path="parts/cube.egg"):
         for x in range(self.info_grid.width):
@@ -92,6 +150,7 @@ class WFCAnimator(Animator):
                     self.position_in_grid(cell, pos, Coord(1,1,1))
 
                     cell.set_scale(Coord(to_unit_scale.x, to_unit_scale.y * 0.8, to_unit_scale.z))
+                    cell.set_tag("cell", pos.to_coord_string())
 
                     colour = Colour(0,0,1,0.5)
                     cell.set_material(self.make_material(colour))
@@ -99,7 +158,6 @@ class WFCAnimator(Animator):
                         cell.set_transparency(True)
                     cell.reparent_to(self.render)
                     self.info_grid.set(x,y,z, cell)
-                    self.cell_to_grid_coord[cell] = pos
     
     def create_axes(self, path="parts/cube.egg"):
         # def create_axis(diameter_scalar, length_scalar, dimension: Dimensions, path, colour):
@@ -213,46 +271,32 @@ class WFCAnimator(Animator):
                     self.canvas.set(c_x + x, c_y + y, c_z + z, key)
 
     def wfc_collapse_once(self, task):
-        if self.collapse_once or self.collapse_repeat and not self.wfc.collapse_queue.empty():
-            coll = self.wfc.collapse_queue.get()
-            choice_id, choice_coords, choice_origin = self.wfc.collapse(coll)
-
-            # Filter non-valid entries in the collapse queue
-            # while choice_id is None:
-            #     coll = self.wfc.collapse_queue.get()
-            #     choice_id, choice_coords, choice_origin = self.wfc.collapse(coll)
-
-            for coord in choice_coords:
-                comm.communicate(f"Adding to prop queue: {choice_id, coord}")
-                self.wfc.prop_queue.put(Propagation([choice_id], coord))
-            if choice_id in self.wfc.terminals.keys():
-                self.inform_animator_choice(choice_id, choice_origin)
-            self.wfc.propagate()
+        if self.collapse_once:
+            id, _, origin = self.wfc.collapse_once()
+            if id is not None and origin is not None:
+                self.inform_animator_choice(id, origin)
             self.collapse_once = False
-            comm.communicate(f"Collapses done 2; {self.wfc.collapse_queue.empty()}")
-            comm.communicate(f"Props done; {self.wfc.prop_queue.empty()}")
-            comm.communicate(f"Continue next collapse? {self.collapse_once}")
         return task.cont
     
     def inform_animator_choice(self, choice, coord):
         terminal = self.wfc.terminals[choice]
-        if not isinstance(terminal, Void):
-            comm.communicate(f"Model {choice} added at {coord}")
+        comm.communicate(f"Model {choice} added at {coord}")
+        if terminal.colour:
             self.add_model(coord, extent=terminal.extent.whd(), colour=terminal.colour)
 
 # comm.silence()
 
 
-# terminals, adjs = Toy().example_slanted()
-# terminals, adjs = Toy().example_zebra_horizontal()
-# terminals, adjs = Toy().example_zebra_vertical()
-# terminals, adjs = Toy().example_zebra_horizontal_3()
-# terminals, adjs = Toy().example_zebra_vertical_3()
-# terminals, adjs = Toy().example_big_tiles()
-terminals, adjs = Toy().example_meta_tiles_fit_area()
-# terminals, adjs = Toy().example_meta_tiles_2()
-# terminals, adjs = Toy().example_meta_tiles()
-# terminals, adjs = Toy().example_meta_tiles_zebra_horizontal()
+# terminals, adjs, def_w = Toy().example_slanted()
+# terminals, adjs, def_w = Toy().example_zebra_horizontal()
+# terminals, adjs, def_w = Toy().example_zebra_vertical()
+# terminals, adjs, def_w = Toy().example_zebra_horizontal_3()
+# terminals, adjs, def_w = Toy().example_zebra_vertical_3()
+# terminals, adjs, def_w = Toy().example_big_tiles()
+terminals, adjs, def_w = Toy().example_meta_tiles_fit_area()
+# terminals, adjs, def_w = Toy().example_meta_tiles_2()
+# terminals, adjs, def_w = Toy().example_meta_tiles()
+# terminals, adjs, def_w = Toy().example_meta_tiles_zebra_horizontal()
 
 grid_extent = Coord(20,1,20)
 # grid_extent = Coord(20,20,20)
@@ -261,7 +305,7 @@ start_coord = grid_extent * Coord(0.5,0,0.5)
 start_coord = Coord(int(start_coord.x), int(start_coord.y), int(start_coord.z))
 
 start_time = time()
-wfc = WFC(terminals, adjs, grid_extent=grid_extent, start_coord=start_coord)
+wfc = WFC(terminals, adjs, grid_extent=grid_extent, start_coord=start_coord, default_weights=def_w)
 wfc_init_time = time() - start_time
 print(f"WFC init: {wfc_init_time}")
 
@@ -271,17 +315,6 @@ anim_init_time = time() - start_time - wfc_init_time
 print(f"Anim init time: {anim_init_time}")
 
 print("Running WFC")
-
-# TODO: can move this to a task in the animator. Allows for full control over the collapse queue progression.
-# while not wfc.collapse_queue.empty():
-#     coll = wfc.collapse_queue.get()
-#     choice_id, choice_coords = wfc.collapse(coll)
-
-#     for coord in choice_coords:
-#         comm.communicate(f"Adding to prop queue: {choice_id, coord}")
-#         wfc.prop_queue.put(Propagation([choice_id], coord))
-
-#     wfc.propagate()
 
 # run_time = time() - anim_init_time - wfc_init_time - start_time
 # print(f"Running time: {run_time}")
