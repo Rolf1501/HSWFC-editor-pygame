@@ -6,10 +6,10 @@ from collections import namedtuple
 class Cardinals(Enum):
     NORTH = (0, 0, 1)
     SOUTH = (0, 0, -1)
-    EAST =  (1, 0, 0)
-    WEST =  (-1, 0, 0)
-    TOP =   (0, 1, 0)
-    BOTTOM =(0, -1, 0)
+    EAST = (1, 0, 0)
+    WEST = (-1, 0, 0)
+    TOP = (0, 1, 0)
+    BOTTOM = (0, -1, 0)
 
     @staticmethod
     def cardinal_to_dimension(cardinal):
@@ -27,10 +27,11 @@ class Operations(Enum):
     PAR = 2
     CENTER = 3
 
+
 class Dimensions(Enum):
-    X = (1,0,0)
-    Y = (0,1,0)
-    Z = (0,0,1)
+    X = (1, 0, 0)
+    Y = (0, 1, 0)
+    Z = (0, 0, 1)
 
 
 MAX = 9999999

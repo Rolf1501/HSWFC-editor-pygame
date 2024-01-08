@@ -6,8 +6,16 @@ from util_data import tuple_to_numpy
 
 
 class Part:
-    def __init__(self, extent: BB, up: C = C.TOP, orientation: C = C.NORTH, rotation: int = 0, translation: Coord = Coord(0, 0, 0),
-                 name="", colour: Colour = Colour(1,0,0,1)) -> None:
+    def __init__(
+        self,
+        extent: BB,
+        up: C = C.TOP,
+        orientation: C = C.NORTH,
+        rotation: int = 0,
+        translation: Coord = Coord(0, 0, 0),
+        name="",
+        colour: Colour = Colour(1, 0, 0, 1),
+    ) -> None:
         self.extent = extent
         self.up = up
         self.orientation = orientation
@@ -21,8 +29,12 @@ class Part:
         rel_arr = tuple_to_numpy(relative_adjacency.value)
         r = (self.rotation % 360) / 90.0
 
-        if C.cardinal_to_dimension(relative_adjacency) == C.cardinal_to_dimension(self.up):
-            return rel_arr * up_arr # Negate if up and relative differ (top becomes bottom and vice versa)
+        if C.cardinal_to_dimension(relative_adjacency) == C.cardinal_to_dimension(
+            self.up
+        ):
+            return (
+                rel_arr * up_arr
+            )  # Negate if up and relative differ (top becomes bottom and vice versa)
 
         # To rotate an for n times around the up-direction, shortcuts can be taken.
         # The value corresponding to the dimension of the up-direction (up_d) does not change.
@@ -34,8 +46,10 @@ class Part:
             rot_arr = rel_arr * (-r + 1)
             return C(tuple(rot_arr))
         else:
-            up_nand = ~(up_arr & 1) + 2 # bitwise NAND
-            rot_arr = (np.sum(rel_arr)) *  (-r + 2) * ((rel_arr | up_nand) ^ rel_arr) # bitwise XOR and optional negation
+            up_nand = ~(up_arr & 1) + 2  # bitwise NAND
+            rot_arr = (
+                (np.sum(rel_arr)) * (-r + 2) * ((rel_arr | up_nand) ^ rel_arr)
+            )  # bitwise XOR and optional negation
         return C(tuple(rot_arr))
 
     def __repr__(self) -> str:

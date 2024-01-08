@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from coord import Coord
 
+
 @dataclass()
 class BoundingBox:
     minx: int
@@ -10,7 +11,8 @@ class BoundingBox:
     minz: int = field(default=0)
     maxz: int = field(default=1)
     auto_adjust: bool = field(
-        default=True)  # If True, automatically sets the bounds such that min is always less than max.
+        default=True
+    )  # If True, automatically sets the bounds such that min is always less than max.
 
     @classmethod
     def from_whd(cls, width: int, height: int, depth: int):
@@ -33,9 +35,13 @@ class BoundingBox:
 
     def __add__(self, other):
         return BoundingBox(
-            self.minx + other.minx, self.maxx + other.maxx,
-            self.miny + other.miny, self.maxy + other.maxy,
-            self.minz + other.minz, self.maxz + other.maxz)
+            self.minx + other.minx,
+            self.maxx + other.maxx,
+            self.miny + other.miny,
+            self.maxy + other.maxy,
+            self.minz + other.minz,
+            self.maxz + other.maxz,
+        )
 
     def width(self):
         return self.maxx - self.minx
@@ -48,9 +54,13 @@ class BoundingBox:
 
     def whd(self):
         return self.max_coord() - self.min_coord()
-    
+
     def center(self) -> Coord:
-        return Coord(self.width() * 0.5 + self.minx, self.height() * 0.5 + self.miny, self.depth() * 0.5 + self.minz)
+        return Coord(
+            self.width() * 0.5 + self.minx,
+            self.height() * 0.5 + self.miny,
+            self.depth() * 0.5 + self.minz,
+        )
 
     def to_positive_translation(self):
         t = BoundingBox(0, 0, 0, 0)
@@ -70,7 +80,11 @@ class BoundingBox:
         self += self.to_positive_translation()
 
     def can_contain(self, other):
-        if other.width() <= self.width() and other.height() <= self.height() and other.depth() <= self.depth():
+        if (
+            other.width() <= self.width()
+            and other.height() <= self.height()
+            and other.depth() <= self.depth()
+        ):
             return True
         return False
 
@@ -79,7 +93,11 @@ class BoundingBox:
         self.translate(translation)
 
     def extent_sum(self, other):
-        return [self.width() + other.width(), self.height() + other.height(), self.depth() + other.depth()]
+        return [
+            self.width() + other.width(),
+            self.height() + other.height(),
+            self.depth() + other.depth(),
+        ]
 
     def min_coord(self) -> Coord:
         return Coord(self.minx, self.miny, self.minz)

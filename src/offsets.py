@@ -4,29 +4,32 @@ import numpy as np
 from util_data import Cardinals as C
 
 
-class Offset(namedtuple("Offset", ["x","y","z"])):
+class Offset(namedtuple("Offset", ["x", "y", "z"])):
     N_ATRRIBUTES = 3
-    
+
     @classmethod
     def from_numpy_array(cls, array: np.ndarray):
-        assert(len(array) <= Offset.N_ATRRIBUTES)
+        assert len(array) <= Offset.N_ATRRIBUTES
 
         return cls(*array)
-    
+
     def to_numpy_array(self):
         return np.asarray([*self])
-    
+
     def negation(self):
         return self.scaled(-1)
-    
+
     def scaled(self, scalar):
         return Offset(self.x * scalar, self.y * scalar, self.z * scalar)
+
 
 @dataclass
 class OffsetFactory:
     def get_offsets(self, dimensions: int = 3, cardinal: bool = True) -> list[Offset]:
         if dimensions > 3 or dimensions < 1:
-            raise DimensionsNotSupported(f"Dimension should not be less than 1 and should not exceed 3. Got: {dimensions}")
+            raise DimensionsNotSupported(
+                f"Dimension should not be less than 1 and should not exceed 3. Got: {dimensions}"
+            )
         if cardinal:
             # There are two neighbours to consider per dimension.
             offsets = []
@@ -38,10 +41,11 @@ class OffsetFactory:
                 offset_minus[i] = -1
                 offsets.append(Offset.from_numpy_array(offset_plus))
                 offsets.append(Offset.from_numpy_array(offset_minus))
-            
+
             return offsets
         else:
             raise NotImplementedError("Offsets does not support non-cardinal offsets")
+
 
 class DimensionsNotSupported(Exception):
     def __init__(self, message):

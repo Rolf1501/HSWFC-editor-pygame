@@ -6,15 +6,21 @@ from model import Model
 
 comm = C()
 
+
 class GeometricSolver:
-    def __init__(self, mht: model_hierarchy_tree.MHTree, parts: dict[int, Part], full_model_tree: ModelTree):
+    def __init__(
+        self,
+        mht: model_hierarchy_tree.MHTree,
+        parts: dict[int, Part],
+        full_model_tree: ModelTree,
+    ):
         self.mht = mht
         self.parts = parts
         self.full_model_tree = full_model_tree
 
     def process(self, node_id: int, processed: dict[int, bool]):
         """
-        Recursively solves how the parts should be positioned relative to one another. 
+        Recursively solves how the parts should be positioned relative to one another.
         """
         part = self.parts[node_id]
         part_info = (node_id, part.name)
@@ -26,15 +32,23 @@ class GeometricSolver:
             # Determine collapse order of children.
             comm.communicate(f"Determining sibling processing order...")
 
-            sibling_links = [link for link in self.full_model_tree.links if
-                             link.source in children and link.attachment in children]
-            model_subtree = ModelTree(incoming_graph_data=self.full_model_tree.subgraph(children), links=sibling_links)
+            sibling_links = [
+                link
+                for link in self.full_model_tree.links
+                if link.source in children and link.attachment in children
+            ]
+            model_subtree = ModelTree(
+                incoming_graph_data=self.full_model_tree.subgraph(children),
+                links=sibling_links,
+            )
 
             # Processing order corresponds to the dependencies of the siblings.
             process_order = model_subtree.get_sibling_order()
             if process_order:
-                comm.communicate(f"Found sibling order: {list(map(lambda sib: (sib, self.parts[sib].name), process_order))}",
-                                 V.HIGH)
+                comm.communicate(
+                    f"Found sibling order: {list(map(lambda sib: (sib, self.parts[sib].name), process_order))}",
+                    V.HIGH,
+                )
             else:
                 comm.communicate(f"No more siblings found for {part_info}", V.HIGH)
 
@@ -46,9 +60,8 @@ class GeometricSolver:
 
             # Only include parts and links of the children.
             model = Model(
-                {k: self.parts[k] for k in children},
-                sibling_links,
-                model_subtree)
+                {k: self.parts[k] for k in children}, sibling_links, model_subtree
+            )
 
             model.solve()
             model.contain_in(part.extent)
@@ -63,13 +76,17 @@ class GeometricSolver:
             # E.g. when aligning with center: move attachment to source along centerline until overlap occurs.
             processed[node_id] = True
 
-            comm.communicate(f"All children of node {part_info} completed. Fitting parts...")
+            comm.communicate(
+                f"All children of node {part_info} completed. Fitting parts..."
+            )
             comm.communicate(f"Parts status:", V.HIGH)
             for p in self.parts.items():
                 comm.communicate(f"\t{p}", V.HIGH)
 
         else:
-            comm.communicate("No more children found. Checking adjacent siblings processing status...")
+            comm.communicate(
+                "No more children found. Checking adjacent siblings processing status..."
+            )
             # TODO: collapse meta node into leaves.
             # If no other adjacent siblings have been processed yet, simply collapse.
             # Otherwise, check where that sibling is, how it related to this node and where it overlaps.
@@ -78,5 +95,7 @@ class GeometricSolver:
             # Return to parent when all children are processed.
             processed[node_id] = True
 
-        comm.communicate(f"Processing node {(node_id, self.parts[node_id].name)} complete.")
+        comm.communicate(
+            f"Processing node {(node_id, self.parts[node_id].name)} complete."
+        )
         return True

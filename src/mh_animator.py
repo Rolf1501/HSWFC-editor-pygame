@@ -14,6 +14,7 @@ from geometric_solver import GeometricSolver as GS
 # from panda3d.core import load_prc_file, NodePath, Material, PointLight
 # from direct.showbase.ShowBase import ShowBase
 from animator import GSAnimator
+
 comm = Communicator()
 
 select_mode = False
@@ -30,7 +31,7 @@ end = (0, 0)
 
 # TOY EXAMPLE
 
-# Collection of all parts. 
+# Collection of all parts.
 # Orientations are implicit. All initially point towards North.
 # parts: dict[int, Part] = {
 #     -1: Part(BB(0, 1, 0, 1, 0, 1), name="Root"),
@@ -40,19 +41,17 @@ end = (0, 0)
 # }
 
 parts: dict[int, Part] = {
-    -1: Part(BB(0, 1, 0, 1, 0, 1), name="Root", colour=Colour(0,0,0,1)),
-    0: Part(BB(0, 500, 0, 10, 0, 200), name="Car frame", colour=Colour(0,0,0.5,0.5)),
-    9: Part(BB(0, 500, 0, 10, 0, 150), name="Frame", colour=Colour(0,0,1,1)),
-
-    1: Part(BB(0, 300, 0, 75, 0, 75), name="Front frame", colour=Colour(0,1,1,0.5)),
-    2: Part(BB(0, 250, 0, 50, 0, 50), name="Front axle", colour=Colour(.5,0,1,1)),
-    3: Part(BB(0, 75, 0, 75, 0, 25), name="Front wheel", colour=Colour(1,.5,0,1)),
-    4: Part(BB(0, 75, 0, 75, 0, 25), name="Front wheel", colour=Colour(1,.5,0,1)),
-
-    5: Part(BB(0, 350, 0, 85, 0, 85), name="Rear frame", colour=Colour(1,0,1,0.5)),
-    6: Part(BB(0, 300, 0, 50, 0, 50), name="Rear axle", colour=Colour(1,0.5,0,1)),
-    7: Part(BB(0, 85, 0, 85, 0, 25), name="Rear wheel", colour=Colour(0,0.5,1,1)),
-    8: Part(BB(0, 85, 0, 85, 0, 25), name="Rear wheel", colour=Colour(0,0.5,1,1)),
+    -1: Part(BB(0, 1, 0, 1, 0, 1), name="Root", colour=Colour(0, 0, 0, 1)),
+    0: Part(BB(0, 500, 0, 10, 0, 200), name="Car frame", colour=Colour(0, 0, 0.5, 0.5)),
+    9: Part(BB(0, 500, 0, 10, 0, 150), name="Frame", colour=Colour(0, 0, 1, 1)),
+    1: Part(BB(0, 300, 0, 75, 0, 75), name="Front frame", colour=Colour(0, 1, 1, 0.5)),
+    2: Part(BB(0, 250, 0, 50, 0, 50), name="Front axle", colour=Colour(0.5, 0, 1, 1)),
+    3: Part(BB(0, 75, 0, 75, 0, 25), name="Front wheel", colour=Colour(1, 0.5, 0, 1)),
+    4: Part(BB(0, 75, 0, 75, 0, 25), name="Front wheel", colour=Colour(1, 0.5, 0, 1)),
+    5: Part(BB(0, 350, 0, 85, 0, 85), name="Rear frame", colour=Colour(1, 0, 1, 0.5)),
+    6: Part(BB(0, 300, 0, 50, 0, 50), name="Rear axle", colour=Colour(1, 0.5, 0, 1)),
+    7: Part(BB(0, 85, 0, 85, 0, 25), name="Rear wheel", colour=Colour(0, 0.5, 1, 1)),
+    8: Part(BB(0, 85, 0, 85, 0, 25), name="Rear wheel", colour=Colour(0, 0.5, 1, 1)),
 }
 
 # Edges determine the hierarchy such that for each edge (u, v), u consists of v.
@@ -66,24 +65,64 @@ edges = [
     mht.MHEdge(1, 4),
     mht.MHEdge(5, 6),
     mht.MHEdge(5, 7),
-    mht.MHEdge(5, 8)
+    mht.MHEdge(5, 8),
 ]
 
 links = [
-    mht.MHLink(0, 1, mht.Cardinals.WEST,
-               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Z)]),
-    mht.MHLink(0, 5, mht.Cardinals.EAST,
-               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Z)]),
-
-    mht.MHLink(2, 3, mht.Cardinals.EAST,
-               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Z)]),
-    mht.MHLink(2, 4, mht.Cardinals.WEST,
-               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Z)]),
-
-    mht.MHLink(6, 7, mht.Cardinals.EAST,
-               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Z)]),
-    mht.MHLink(6, 8, mht.Cardinals.WEST,
-               [mht.Properties(Operations.ORTH), mht.Properties(Operations.CENTER, Dimensions.Z)]),
+    mht.MHLink(
+        0,
+        1,
+        mht.Cardinals.WEST,
+        [
+            mht.Properties(Operations.ORTH),
+            mht.Properties(Operations.CENTER, Dimensions.Z),
+        ],
+    ),
+    mht.MHLink(
+        0,
+        5,
+        mht.Cardinals.EAST,
+        [
+            mht.Properties(Operations.ORTH),
+            mht.Properties(Operations.CENTER, Dimensions.Z),
+        ],
+    ),
+    mht.MHLink(
+        2,
+        3,
+        mht.Cardinals.EAST,
+        [
+            mht.Properties(Operations.ORTH),
+            mht.Properties(Operations.CENTER, Dimensions.Z),
+        ],
+    ),
+    mht.MHLink(
+        2,
+        4,
+        mht.Cardinals.WEST,
+        [
+            mht.Properties(Operations.ORTH),
+            mht.Properties(Operations.CENTER, Dimensions.Z),
+        ],
+    ),
+    mht.MHLink(
+        6,
+        7,
+        mht.Cardinals.EAST,
+        [
+            mht.Properties(Operations.ORTH),
+            mht.Properties(Operations.CENTER, Dimensions.Z),
+        ],
+    ),
+    mht.MHLink(
+        6,
+        8,
+        mht.Cardinals.WEST,
+        [
+            mht.Properties(Operations.ORTH),
+            mht.Properties(Operations.CENTER, Dimensions.Z),
+        ],
+    ),
 ]
 
 full_model_tree = ModelTree.from_parts(parts, links)
@@ -140,7 +179,6 @@ collapse_stack: list[Iteration] = [Iteration(-1, None, None)]
 ProcessState = namedtuple("ProcessState", ["node_id", "parts", "processed"])
 processed = {k: False for k in nodes}
 process_log: list[ProcessState] = []
-
 
 
 ##########################

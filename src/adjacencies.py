@@ -3,24 +3,37 @@ import numpy as np
 from offsets import OffsetFactory, Offset
 from bidict import bidict
 from collections import namedtuple
-from properties import Properties 
+from properties import Properties
 
-class Relation(namedtuple("Relation", ["other","weight"])):
+
+class Relation(namedtuple("Relation", ["other", "weight"])):
     def __init_subclass__(cls) -> None:
         return super().__init_subclass__()
 
+
 class Adjacency:
-    def __init__(self, source: int, allowed_neighbours: set[Relation], offset: Offset, symmetric: bool, properties: list[Properties]=[]) -> None:
+    def __init__(
+        self,
+        source: int,
+        allowed_neighbours: set[Relation],
+        offset: Offset,
+        symmetric: bool,
+        properties: list[Properties] = [],
+    ) -> None:
         self.source = source
         self.allowed_neighbours = allowed_neighbours
         self.offset = offset
         self.symmetric = symmetric
         self.properties = properties
 
+
 class AdjacencyAny(Adjacency):
-    def __init__(self, source: int, offset: Offset, symmetric: bool, weight: float) -> None:
+    def __init__(
+        self, source: int, offset: Offset, symmetric: bool, weight: float
+    ) -> None:
         super().__init__(source, {}, offset, symmetric)
         self.weight = weight
+
 
 @dataclass
 class AdjacencyMatrix:
@@ -35,7 +48,9 @@ class AdjacencyMatrix:
     def __post_init__(self):
         n_parts = len(self.parts)
         self.parts_to_index_mapping = bidict({self.parts[i]: i for i in range(n_parts)})
-        self.offsets = OffsetFactory().get_offsets(dimensions=self.offsets_dimensions, cardinal=True)
+        self.offsets = OffsetFactory().get_offsets(
+            dimensions=self.offsets_dimensions, cardinal=True
+        )
         self.ADJ = {}
         self.ADJ_W = {}
         for offset in self.offsets:
@@ -65,12 +80,12 @@ class AdjacencyMatrix:
 
     def get_adj(self, offset: Offset, part_id: int):
         return self.ADJ[offset][self.parts_to_index_mapping[part_id]]
-        
+
     def get_adj_w(self, offset: Offset, part_id: int):
         return self.ADJ_W[offset][self.parts_to_index_mapping[part_id]]
 
     def print_adj(self):
-        for (o, a) in self.ADJ.items():
+        for o, a in self.ADJ.items():
             print(o)
             for i in a:
                 print(i)

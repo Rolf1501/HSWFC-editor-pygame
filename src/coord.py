@@ -2,25 +2,28 @@ import numpy as np
 from collections import namedtuple
 
 
-class Coord(namedtuple("Coord", ["x","y","z"])):
-
+class Coord(namedtuple("Coord", ["x", "y", "z"])):
     def __add__(self, other):
         return Coord(self.x + other.x, self.y + other.y, self.z + other.z)
-    
+
     def __sub__(self, other):
         return Coord(self.x - other.x, self.y - other.y, self.z - other.z)
-    
+
     def __mul__(self, other):
         return Coord(self.x * other.x, self.y * other.y, self.z * other.z)
-    
+
     def __repr__(self) -> str:
         return f"<{self.x}, {self.y}, {self.z}>"
-    
+
     @classmethod
     def from_string(self, string: str):
         xyz = string.split(",")
-        return Coord(float(xyz[0]), float(xyz[1]), float(xyz[2])) if len(xyz) == 3 else None
-    
+        return (
+            Coord(float(xyz[0]), float(xyz[1]), float(xyz[2]))
+            if len(xyz) == 3
+            else None
+        )
+
     @staticmethod
     def abs_diff(this, that):
         return Coord(abs(this.x - that.x), abs(this.y - that.y), abs(this.z - that.z))
@@ -33,19 +36,18 @@ class Coord(namedtuple("Coord", ["x","y","z"])):
         self = self.scaled(scalar)
 
     def scaled(self, scalar):
-        return Coord(
-            self.x * scalar,
-            self.y * scalar,
-            self.z * scalar)
+        return Coord(self.x * scalar, self.y * scalar, self.z * scalar)
 
     def to_tuple(self):
         return (self.x, self.y, self.z)
 
     def to_numpy_array(self):
         return np.asarray([self.x, self.y, self.z])
-    
+
     def abs_diff(self, other):
-        return Coord(abs(self.x - other.x), abs(self.y - other.y), abs(self.z - other.z))
-    
+        return Coord(
+            abs(self.x - other.x), abs(self.y - other.y), abs(self.z - other.z)
+        )
+
     def to_coord_string(self):
         return f"{self.x},{self.y},{self.z}"

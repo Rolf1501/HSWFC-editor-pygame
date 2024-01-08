@@ -259,7 +259,9 @@ class WFCAnimator(Animator):
         if terminal.colour:
             self.add_model(coord, extent=terminal.extent.whd(), colour=terminal.colour)
 
-# comm.silence()
+
+
+comm.silence()
 
 
 # terminals, adjs, def_w = Toy().example_slanted()
@@ -268,7 +270,8 @@ class WFCAnimator(Animator):
 # terminals, adjs, def_w = Toy().example_zebra_horizontal_3()
 # terminals, adjs, def_w = Toy().example_zebra_vertical_3()
 # terminals, adjs, def_w = Toy().example_big_tiles()
-terminals, adjs, def_w = Toy().example_meta_tiles_fit_area()
+# terminals, adjs, def_w = Toy().example_meta_tiles_fit_area()
+terminals, adjs, def_w = Toy().example_meta_tiles_simple()
 # terminals, adjs, def_w = Toy().example_meta_tiles_2()
 # terminals, adjs, def_w = Toy().example_meta_tiles()
 # terminals, adjs, def_w = Toy().example_meta_tiles_zebra_horizontal()
