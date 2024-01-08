@@ -40,6 +40,7 @@ class Terminal:
         """
         Calculates the distance along each axis to the first occupied cell.
         """
+        self.heightmaps = {}
         axes = {0: (C.TOP, C.BOTTOM), 1: (C.EAST, C.WEST), 2: (C.NORTH, C.SOUTH)}
         for axis in axes.keys():
             cardinal_along, cardinal_against = axes[axis]
