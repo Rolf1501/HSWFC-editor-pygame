@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
-from coord import Coord
+import numpy as np
 from boundingbox import BoundingBox as BB
+from coord import Coord
+from offsets import Offset
 from side_properties import SidesDescriptor
 from util_data import Dimensions as D, Cardinals as C, Colour
-import numpy as np
 
 
 @dataclass
@@ -28,12 +29,12 @@ class Terminal:
         self.atom_indices = [Coord(yxz[1], yxz[0], yxz[2]) for yxz in non_empty_cells]
         whd = self.extent.whd()
         self.atom_mask = np.full((whd.x, whd.y, whd.z, len(self.atom_indices)), False)
-        print(self.atom_indices)
+
+        # Set the corresponding atoms' cells to True.
         for i in range(len(self.atom_indices)):
             c = self.atom_indices[i]
             curr = self.atom_mask[c.y, c.x, c.z]
             curr[i] = True
-        print(self.atom_mask)
         self.calc_heightmaps()
 
     def calc_heightmaps(self):
@@ -41,7 +42,12 @@ class Terminal:
         Calculates the distance along each axis to the first occupied cell.
         """
         self.heightmaps = {}
-        axes = {0: (C.TOP, C.BOTTOM), 1: (C.EAST, C.WEST), 2: (C.NORTH, C.SOUTH)}
+        # TODO: verify whether the mapping of axis to cardinal is correct.
+        axes = {
+            0: (Offset.from_cardinal(C.TOP), Offset.from_cardinal(C.BOTTOM)),
+            1: (Offset.from_cardinal(C.EAST), Offset.from_cardinal(C.WEST)),
+            2: (Offset.from_cardinal(C.NORTH), Offset.from_cardinal(C.SOUTH)),
+        }
         for axis in axes.keys():
             cardinal_along, cardinal_against = axes[axis]
             hm_along, hm_against = self.calc_heightmap_for_axis(self.mask, axis=axis)

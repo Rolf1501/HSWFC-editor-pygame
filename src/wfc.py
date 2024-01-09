@@ -55,7 +55,7 @@ class WFC:
     def __post_init__(self):
         keys = np.asarray([*self.terminals.keys()])
         adj = self.adjacencies
-        self.adj_matrix = AdjacencyMatrix(keys, adj)
+        self.adj_matrix = AdjacencyMatrix(keys, adj, terminals=self.terminals)
         self.grid_man = GridManager(*self.grid_extent)
         self.offsets = OffsetFactory().get_offsets(3)
 

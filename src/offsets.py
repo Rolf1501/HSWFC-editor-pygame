@@ -13,6 +13,10 @@ class Offset(namedtuple("Offset", ["x", "y", "z"])):
 
         return cls(*array)
 
+    @classmethod
+    def from_cardinal(cls, cardinal: C):
+        return Offset(*cardinal.value)
+
     def to_numpy_array(self):
         return np.asarray([*self])
 
