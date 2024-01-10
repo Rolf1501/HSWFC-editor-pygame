@@ -133,12 +133,15 @@ class WFC:
         Considers all allowed tile placements for the given cell, such that the given cell is always covered.
         """
         comm.communicate(f"\nChoosing cell: {x,y,z}")
-        choices = self.grid_man.weighted_choices.get(x, y, z)
-        choice_sets = {}
+        # choices = self.grid_man.weighted_choices.get(x, y, z)
+        # choice_sets = {}
 
-        choice_booleans = choices[:, 0]
-        choice_ids = choices[:, 1]
-        choice_weights = choices[:, 2]
+        # choice_booleans = choices[:, 0]
+        # choice_ids = choices[:, 1]
+        # choice_weights = choices[:, 2]
+        choice_booleans = self.grid_man.choice_booleans.get(x, y, z)
+        choice_ids = self.grid_man.choice_ids.get(x, y, z)
+        choice_weights = self.grid_man.choice_weights.get(x, y, z)
 
         choice_booleans_int_mask = np.asarray(choice_booleans, dtype=int)
 
@@ -192,19 +195,19 @@ class WFC:
             for x in range(extent.x)
         }
 
-    def check_compatibility_neighbour(self, coord, mask_offset, terminal_id) -> bool:
-        """
-        A neighbour is only valid if that neighbour is not yet chosen and if it may be covered by the part in question.
-        """
-        neighbour_grid_coord = coord + mask_offset
+    # def check_compatibility_neighbour(self, coord, mask_offset, terminal_id) -> bool:
+    #     """
+    #     A neighbour is only valid if that neighbour is not yet chosen and if it may be covered by the part in question.
+    #     """
+    #     neighbour_grid_coord = coord + mask_offset
 
-        choices = self.grid_man.weighted_choices.get(*neighbour_grid_coord)
-        c_n = choices is not None
-        if c_n:
-            c_t = terminal_id in choices[:, 1]
-            c_c = self.grid_man.grid.is_chosen(*neighbour_grid_coord)
-            return c_t and not c_c
-        return False
+    #     choices = self.grid_man.weighted_choices.get(*neighbour_grid_coord)
+    #     c_n = choices is not None
+    #     if c_n:
+    #         c_t = terminal_id in choices[:, 1]
+    #         c_c = self.grid_man.grid.is_chosen(*neighbour_grid_coord)
+    #         return c_t and not c_c
+    #     return False
 
     def find_valid_arrangement(self, mask: Grid, extent: Coord) -> set:
         """
@@ -254,8 +257,9 @@ class WFC:
                     remaining_choices |= self.adj_matrix.get_adj(o, int(c))
 
                 # Find the set of choices currently allowed for the neighbour
-                neigbour_w_choices = self.grid_man.weighted_choices.get(*n)
-                pre = np.asarray(neigbour_w_choices[:, 0], dtype=bool)
+                neigbour_w_choices = self.grid_man.choice_weights.get(*n)
+                neigbour_b_choices = self.grid_man.choice_booleans.get(*n)
+                pre = np.asarray(neigbour_b_choices, dtype=bool)
 
                 # comm.communicate(f"Checking intersection: \t{pre} and {remaining_choices}")
                 post = pre & remaining_choices
@@ -263,14 +267,15 @@ class WFC:
                 if sum(post) == 0:
                     continue
 
-                neigbour_w_choices[:, 2][int(cs[0])]
                 for i in cs:
-                    neigbour_w_choices[:, 2] += self.adj_matrix.get_adj_w(o, int(i))
+                    neigbour_w_choices += self.adj_matrix.get_adj_w(o, int(i))
+                self.grid_man.choice_weights.set(*n, neigbour_w_choices)
 
                 # comm.communicate(f"\tUpdated weights to: {neigbour_w_choices[:,2]}")
                 if np.any(pre != post):
                     comm.communicate(f"\tUpdated choices to: {post}")
-                    neigbour_w_choices[:, 0] = post
+                    neigbour_b_choices = post
+                    self.grid_man.choice_booleans.set(*n, post)
 
                     # Calculate entropy and get indices of allowed neighbour terminals
                     # TODO: use np sum instead

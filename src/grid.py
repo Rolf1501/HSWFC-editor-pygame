@@ -73,17 +73,25 @@ class GridManager:
     weighted_choices: Grid = field(
         init=False
     )  # 4D array: 3D for cells, 1D for choices.
-    cluster_grid: Grid = field(init=False)
+    choice_booleans: Grid = field(init=False)
+    choice_ids: Grid = field(init=False)
+    choice_weights: Grid = field(init=False)
 
     def __post_init__(self):
         self.grid = Grid(self.width, self.height, self.depth, default_fill_value=None)
         self.entropy = Grid(
             self.width, self.height, self.depth, default_fill_value=None
         )
-        self.weighted_choices = Grid(
+        # self.weighted_choices = Grid(
+        #     self.width, self.height, self.depth, default_fill_value=None
+        # )
+        self.choice_booleans = Grid(
             self.width, self.height, self.depth, default_fill_value=None
         )
-        self.cluster_grid = Grid(
+        self.choice_ids = Grid(
+            self.width, self.height, self.depth, default_fill_value=None
+        )
+        self.choice_weights = Grid(
             self.width, self.height, self.depth, default_fill_value=None
         )
 
@@ -91,16 +99,22 @@ class GridManager:
         self.entropy.set(x, y, z, entropy)
 
     def init_w_choices(self, default_weights):
-        default_choices = [[True, k, default_weights[k]] for k in default_weights]
+        # default_choices = [[True, k, default_weights[k]] for k in default_weights]
+        default_choice_b = [True for _ in default_weights]
+        default_choice_id = [k for k in default_weights]
+        default_choice_w = [default_weights[k] for k in default_weights]
         for w in range(self.width):
             for h in range(self.height):
                 for d in range(self.depth):
-                    self.weighted_choices.set(
-                        w, h, d, np.asarray(default_choices, dtype=float)
+                    self.choice_booleans.set(
+                        w, h, d, np.asarray(default_choice_b, dtype=float)
+                    )
+                    self.choice_ids.set(
+                        w, h, d, np.asarray(default_choice_id, dtype=float)
+                    )
+                    self.choice_weights.set(
+                        w, h, d, np.asarray(default_choice_w, dtype=float)
                     )
 
     def init_entropy(self, max_entropy: float):
         self.entropy.init_grid(max_entropy)
-
-    def set_w_choice(self, x, y, z, weighted_choices: np.ndarray):
-        self.weighted_choices.set(x, y, z, weighted_choices)

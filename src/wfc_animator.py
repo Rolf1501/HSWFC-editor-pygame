@@ -323,7 +323,7 @@ class WFCAnimator(Animator):
     #         self.add_model(coord, extent=terminal.extent.whd(), colour=terminal.colour)
 
 
-comm.silence()
+# comm.silence()
 
 
 # terminals, adjs, def_w = Toy().example_slanted()
@@ -338,7 +338,8 @@ terminals, adjs, def_w = Toy().example_meta_tiles_simple()
 # terminals, adjs, def_w = Toy().example_meta_tiles()
 # terminals, adjs, def_w = Toy().example_meta_tiles_zebra_horizontal()
 
-grid_extent = Coord(100, 1, 100)
+grid_extent = Coord(50, 1, 50)
+# grid_extent = Coord(5, 1, 5)
 # grid_extent = Coord(20,20,20)
 # grid_extent = Coord(6,5,6)
 start_coord = grid_extent * Coord(0.5, 0, 0.5)
