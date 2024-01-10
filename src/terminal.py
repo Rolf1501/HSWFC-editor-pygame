@@ -27,10 +27,13 @@ class Terminal:
     def __post_init__(self):
         # Find all cells in the mask that are not empty, these are the atoms uniquely identified by their index.
         non_empty_cells = np.transpose(self.mask.nonzero())
-        self.atom_indices = [Coord(yxz[1], yxz[0], yxz[2]) for yxz in non_empty_cells]
+        self.atom_indices = [Coord(yxz[0], yxz[1], yxz[2]) for yxz in non_empty_cells]
         whd = self.extent.whd()
-        self.atom_mask = np.full((whd.x, whd.y, whd.z, len(self.atom_indices)), False)
+
+        # TODO: check if this is right.
+        self.atom_mask = np.full((whd.y, whd.x, whd.z, len(self.atom_indices)), False)
         self.n_atoms = len(self.atom_indices)
+
         # Set the corresponding atoms' cells to True.
         for i in range(len(self.atom_indices)):
             c = self.atom_indices[i]

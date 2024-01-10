@@ -75,7 +75,6 @@ class WFC:
                 start, end = self.adj_matrix.part_atom_range_mapping[k]
                 for i in range(start, end):
                     aug[i] = w
-                    # aug[self.adj_matrix.atom_mapping[i]] = w
             self.default_weights = aug
         elif len(self.default_weights) != self.adj_matrix.get_n_atoms():
             self.default_weights = {k: 1 for k in range(self.adj_matrix.get_n_atoms())}
@@ -103,42 +102,86 @@ class WFC:
             coll = self.collapse_queue.get()
             while self.grid_man.grid.is_chosen(*coll.coord):
                 coll = self.collapse_queue.get()
-            choice_id, coord = self.collapse(coll)
-            self.prop_queue.put(Propagation([choice_id], coord))
-            self.propagate()
-            return choice_id, coord
-        return None, None
+            origin_coord, t_id, affected_cells = self.collapse(coll)
+            # choice_id, coord = self.collapse(coll)
+
+            for c in affected_cells:
+                coord, id = c
+
+                self.prop_queue.put(Propagation([id], coord))
+                # self.prop_queue.put(Propagation([choice_id], coord))
+                self.propagate()
+            return origin_coord, t_id, affected_cells
+        return None, None, None
 
     def collapse_automatic(self):
         while not self.is_done():
             self.collapse_once()
-            # self.propagate()
 
-    def collapse(self, coll: Collapse) -> (int, Coord):
+    def get_terminal_range(self, terminal_id: int):
+        return self.adj_matrix.part_atom_range_mapping[terminal_id]
+
+    def collapse(self, coll: Collapse):
         """
         Collapses a the cell at the given coordinate. After making a choice, all covered cells are updated.
         """
         (x, y, z) = coll.coord
         if not self.grid_man.grid.is_chosen(x, y, z):
             choice_id = self.choose(x, y, z)
-            self.grid_man.grid.set(x, y, z, choice_id)
-            self.grid_man.set_entropy(x, y, z, self._calc_entropy(1))
-            self.update_progress_counter(1)
-            return choice_id, Coord(x, y, z)
-        return None, None
-        # return None, None, None
+
+            # TODO: perform collapse on molecular level
+            # Get terminal and relative coord
+            t_id, t_coord = self.adj_matrix.atom_mapping[choice_id]
+            terminal = self.terminals[t_id]
+            # Find originating cell to host part.
+            origin_coord = Coord(x, y, z) - t_coord
+
+            # TODO: make use of np boolean masks
+            # Update the affected cells.
+            affected_cells = []
+            for atom_index in terminal.atom_indices:
+                affected_cell_coord = origin_coord + atom_index
+                comm.communicate(f"Affected cell coord: {affected_cell_coord}")
+                if self.grid_man.grid.within_bounds(*affected_cell_coord):
+                    # Compare the mask of the terminal to the currently available choices and ensure that the terminal atom is allowed.
+                    relative_mask = np.asarray(
+                        terminal.atom_mask[atom_index.y, atom_index.x, atom_index.z],
+                        dtype=bool,
+                    )
+                    choices = self.grid_man.choice_booleans.get(*affected_cell_coord)
+                    (range_start, range_end) = self.get_terminal_range(t_id)
+
+                    sub_choices = np.asarray(choices[range_start:range_end], dtype=bool)
+
+                    # Find the index of a shared atom.
+                    comparison = relative_mask & sub_choices
+                    c_index = np.argmax(comparison)
+                    if comparison[c_index]:
+                        comm.communicate("ATOM ALLOWED!")
+                        atom_id = self.adj_matrix.atom_mapping.inverse[
+                            (t_id, atom_index)
+                        ]
+                        affected_cells.append((affected_cell_coord, atom_id))
+                    else:
+                        comm.communicate(
+                            f"ATOM not allowed...{c_index} RM: {relative_mask} SC: {sub_choices}"
+                        )
+
+            for c in affected_cells:
+                (x, y, z), id = c
+                self.grid_man.grid.set(x, y, z, id)
+                self.grid_man.set_entropy(x, y, z, self._calc_entropy(1))
+                self.update_progress_counter(1)
+            comm.communicate(f"Covered: {affected_cells}")
+            return origin_coord, t_id, affected_cells
+        return None, None, None
 
     def choose(self, x, y, z):
         """
         Considers all allowed tile placements for the given cell, such that the given cell is always covered.
         """
         comm.communicate(f"\nChoosing cell: {x,y,z}")
-        # choices = self.grid_man.weighted_choices.get(x, y, z)
-        # choice_sets = {}
 
-        # choice_booleans = choices[:, 0]
-        # choice_ids = choices[:, 1]
-        # choice_weights = choices[:, 2]
         choice_booleans = self.grid_man.choice_booleans.get(x, y, z)
         choice_ids = self.grid_man.choice_ids.get(x, y, z)
         choice_weights = self.grid_man.choice_weights.get(x, y, z)
@@ -161,23 +204,6 @@ class WFC:
 
         return choice
 
-    def get_available_compatible_area(
-        self, terminal_id: int, coord: Coord, extent: Coord
-    ):
-        """
-        Given the id and extent of a terminal, determines for each cell within reach whether they may be occupied by said terminal.
-        """
-        mask = Grid(*self.get_extent_range(extent), default_fill_value=False)
-        mask_center = extent - Coord(1, 1, 1)
-        for i in range(mask.width):
-            for j in range(mask.height):
-                for k in range(mask.depth):
-                    c = Coord(i, j, k)
-                    offset = c - mask_center
-                    if self.check_compatibility_neighbour(coord, offset, terminal_id):
-                        mask.set(*c, True)
-        return mask
-
     def get_extent_range(self, extent: Coord):
         """
         The range depends on the extent. It returns a range such that all possible positions for the given extent can fit.
@@ -194,40 +220,6 @@ class WFC:
             for y in range(extent.y)
             for x in range(extent.x)
         }
-
-    # def check_compatibility_neighbour(self, coord, mask_offset, terminal_id) -> bool:
-    #     """
-    #     A neighbour is only valid if that neighbour is not yet chosen and if it may be covered by the part in question.
-    #     """
-    #     neighbour_grid_coord = coord + mask_offset
-
-    #     choices = self.grid_man.weighted_choices.get(*neighbour_grid_coord)
-    #     c_n = choices is not None
-    #     if c_n:
-    #         c_t = terminal_id in choices[:, 1]
-    #         c_c = self.grid_man.grid.is_chosen(*neighbour_grid_coord)
-    #         return c_t and not c_c
-    #     return False
-
-    def find_valid_arrangement(self, mask: Grid, extent: Coord) -> set:
-        """
-        Finds the set of allowed origins of a tile through elimination.
-        """
-        valid = self.valid_origins(extent)
-        # TODO: optimize this naive brute-force approach.
-        for x in range(mask.width):
-            for y in range(mask.height):
-                for z in range(mask.depth):
-                    if not mask.get(x, y, z):
-                        for xi in range(extent.x):
-                            for yi in range(extent.y):
-                                for zi in range(extent.z):
-                                    origin = (x - xi, y - yi, z - zi)
-                                    if origin in valid:
-                                        valid.remove(origin)
-                                    if not valid:
-                                        return {}
-        return valid
 
     def propagate_once(self):
         """
@@ -261,7 +253,6 @@ class WFC:
                 neigbour_b_choices = self.grid_man.choice_booleans.get(*n)
                 pre = np.asarray(neigbour_b_choices, dtype=bool)
 
-                # comm.communicate(f"Checking intersection: \t{pre} and {remaining_choices}")
                 post = pre & remaining_choices
 
                 if sum(post) == 0:
@@ -278,7 +269,6 @@ class WFC:
                     self.grid_man.choice_booleans.set(*n, post)
 
                     # Calculate entropy and get indices of allowed neighbour terminals
-                    # TODO: use np sum instead
                     neighbour_w_choices_i = [i for i in range(len(post)) if post[i]]
                     n_choices = len(neighbour_w_choices_i)
 
@@ -287,17 +277,14 @@ class WFC:
                     # If all terminals are allowed, then the entropy does not change. There is nothing to propagate.
                     if self.grid_man.entropy.get(*n) == self.max_entropy:
                         continue
-                    self.prop_queue.put(
-                        Propagation(neighbour_w_choices_i, n.to_tuple())
-                    )
+
+                    self.prop_queue.put(Propagation(neighbour_w_choices_i, n))
 
                     # Output the changed neighbor's location.
                     yield n
 
                 if not self.grid_man.grid.is_chosen(*n):
-                    self.collapse_queue.put(
-                        Collapse(self.grid_man.entropy.get(*n), n.to_tuple())
-                    )
+                    self.collapse_queue.put(Collapse(self.grid_man.entropy.get(*n), n))
 
     def get_atom_from_choice(self, choice):
         return self.adj_matrix.atom_mapping[choice]
@@ -312,7 +299,7 @@ class WFC:
                 comm.communicate(f"Affected by prop: {cell}")
 
     def get_prop_status(self, coord: Coord):
-        return self.grid_man.weighted_choices.get(*coord)
+        return self.grid_man.choice_booleans.get(*coord)
 
     def update_progress_counter(self, increment: int):
         self.counter += increment

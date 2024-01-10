@@ -49,7 +49,7 @@ class AdjacencyMatrix:
     ADJ_W: dict[Offset, np.ndarray] = field(init=False)
     parts_to_index_mapping: bidict[int, int] = field(init=False)
 
-    atom_mapping: bidict = field(init=False)
+    atom_mapping: bidict[int, tuple] = field(init=False)
     atom_adjacency_matrix: dict[Offset, np.ndarray] = field(init=False)
     atom_adjacency_matrix_w: dict[Offset, np.ndarray] = field(init=False)
     part_atom_range_mapping: dict = field(init=False)

@@ -294,24 +294,26 @@ class WFCAnimator(Animator):
 
     def wfc_collapse_once(self, task):
         if self.collapse_once:
-            id, coord = self.wfc.collapse_once()
+            origin_coord, terminal_id, _ = self.wfc.collapse_once()
+            # id, coord = self.wfc.collapse_once()
             # if id is not None:
             #     self.inform_animator_choice(id)
 
-            terminal_id, _ = self.wfc.adj_matrix.atom_mapping[id]
-            comm.communicate(f"Placed: {id} at {coord}")
-            self.add_model(
-                coord,
-                extent=Coord(1, 1, 1),
-                colour=self.wfc.terminals[terminal_id].colour,
-                is_hidden=False,
-            )
+            # terminal_id, _ = self.wfc.adj_matrix.atom_mapping[id]
+            comm.communicate(f"Placed: {terminal_id} at {origin_coord}")
+            self.inform_animator_choice(terminal_id, origin_coord)
+            # self.add_model(
+            #     coord,
+            #     extent=Coord(1, 1, 1),
+            #     colour=self.wfc.terminals[terminal_id].colour,
+            #     is_hidden=False,
+            # )
             self.collapse_once = False
         return task.cont
 
     def inform_animator_choice(self, choice, coord):
-        terminal_id, atom_coord = self.wfc.get_atom_from_choice(choice)
-        terminal = self.wfc.terminals[terminal_id]
+        # terminal_id, atom_coord = self.wfc.get_atom_from_choice(choice)
+        terminal = self.wfc.terminals[choice]
         comm.communicate(f"Model {choice} added at {coord}")
         if terminal.colour:
             self.add_model(coord, extent=terminal.extent.whd(), colour=terminal.colour)
@@ -323,7 +325,7 @@ class WFCAnimator(Animator):
     #         self.add_model(coord, extent=terminal.extent.whd(), colour=terminal.colour)
 
 
-# comm.silence()
+comm.silence()
 
 
 # terminals, adjs, def_w = Toy().example_slanted()

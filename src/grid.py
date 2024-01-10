@@ -82,9 +82,6 @@ class GridManager:
         self.entropy = Grid(
             self.width, self.height, self.depth, default_fill_value=None
         )
-        # self.weighted_choices = Grid(
-        #     self.width, self.height, self.depth, default_fill_value=None
-        # )
         self.choice_booleans = Grid(
             self.width, self.height, self.depth, default_fill_value=None
         )
