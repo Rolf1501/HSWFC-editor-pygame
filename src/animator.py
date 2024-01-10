@@ -123,6 +123,7 @@ class Animator(ShowBase):
         extent: Coord = Coord(1, 1, 1),
         path="parts/cube.egg",
         colour: Colour = Colour(1, 1, 0, 1),
+        is_hidden=True,
     ):
         model: NodePath = self.loader.loadModel(path)
         to_unit_scale = self.scale_to_unit(model)
@@ -140,7 +141,8 @@ class Animator(ShowBase):
                 model.replace_material(mat, self.make_material(colour))
 
         model.reparent_to(self.render)
-        model.hide()
+        if is_hidden:
+            model.hide()
 
         if colour.a < 1:
             model.set_transparency(True)
@@ -151,6 +153,7 @@ class Animator(ShowBase):
 
     def position_in_grid(self, model: NodePath, pos: Coord, extent: Coord):
         # In panda3d, z+ faces the camera. in numpy, z+ faces away from the camera. Make them both uniform, the z-direction is negated.
+        pos = Coord(*pos)
         pos_center = pos + extent.scaled(0.5)
         pos_neg_z = pos_center * Coord(1, 1, -1)
         model.set_pos(pos_neg_z)

@@ -22,6 +22,7 @@ class Terminal:
         init=False
     )  # 4D array for storing which cell contains which atom.
     heightmaps: dict = field(init=False)
+    n_atoms: int = field(init=False)
 
     def __post_init__(self):
         # Find all cells in the mask that are not empty, these are the atoms uniquely identified by their index.
@@ -29,7 +30,7 @@ class Terminal:
         self.atom_indices = [Coord(yxz[1], yxz[0], yxz[2]) for yxz in non_empty_cells]
         whd = self.extent.whd()
         self.atom_mask = np.full((whd.x, whd.y, whd.z, len(self.atom_indices)), False)
-
+        self.n_atoms = len(self.atom_indices)
         # Set the corresponding atoms' cells to True.
         for i in range(len(self.atom_indices)):
             c = self.atom_indices[i]
@@ -65,3 +66,4 @@ class Void(Terminal):
     def __init__(self, extent: BB, colour: Colour = None):
         self.extent = extent
         self.colour = colour
+        super().__init__(extent, None, None, colour, mask=np.full(extent.whd(), True))

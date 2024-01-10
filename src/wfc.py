@@ -47,23 +47,42 @@ class WFC:
     prop_queue: Q[Propagation] = field(default=Q(), init=False)
     start_coord: Coord = field(default=Coord(0, 0, 0))
     continue_collapse: bool = field(default=True)
-    default_weights: dict[int, list[float]] = field(default=None)
+    default_weights: dict[int, float] = field(default=None)
     progress: float = field(default=0)
 
     counter: int = field(init=False, default=0)
 
     def __post_init__(self):
         keys = np.asarray([*self.terminals.keys()])
-        adj = self.adjacencies
-        self.adj_matrix = AdjacencyMatrix(keys, adj, terminals=self.terminals)
+        self.adj_matrix = AdjacencyMatrix(
+            keys, self.adjacencies, terminals=self.terminals
+        )
         self.grid_man = GridManager(*self.grid_extent)
         self.offsets = OffsetFactory().get_offsets(3)
 
         self.max_entropy = self._calc_entropy(len(keys))
         self.grid_man.init_entropy(self.max_entropy)
 
-        if self.default_weights is None:
-            self.default_weights = {k: 1 for k in self.terminals.keys()}
+        # PART IMPL
+        # if self.default_weights is None:
+        #     self.default_weights = {k: 1 for k in self.terminals.keys()}
+
+        # Specify the weights per atom.
+        if not self.default_weights:
+            self.default_weights = {k: 1 for k in range(self.adj_matrix.get_n_atoms())}
+        elif len(self.default_weights) == len(self.terminals):
+            # Expand the weights per part to weight per atom.
+            comm.communicate(f"Expanding weights")
+            aug = {}
+            for k in self.default_weights.keys():
+                w = self.default_weights[k]
+                start, end = self.adj_matrix.part_atom_range_mapping[k]
+                for i in range(start, end):
+                    aug[i] = w
+                    # aug[self.adj_matrix.atom_mapping[i]] = w
+            self.default_weights = aug
+        elif len(self.default_weights) != self.adj_matrix.get_n_atoms():
+            self.default_weights = {k: 1 for k in range(self.adj_matrix.get_n_atoms())}
 
         self.grid_man.init_w_choices(self.default_weights)
 
@@ -76,26 +95,34 @@ class WFC:
         self.total_cells = self.grid_extent.x * self.grid_extent.y * self.grid_extent.z
         self.total_cells_inv = 1.0 / self.total_cells
 
+        comm.communicate(f"WFC initialized.")
+
     def collapse_once(self):
         """
         Performs a single collapse for the first next unchosen tile.
         Returns the chosen terminal id, covered cell coordinates and the origin coordinate of the placed tile.
         """
+        comm.communicate(f"Collapsing once.")
         if not self.collapse_queue.empty():
             coll = self.collapse_queue.get()
             while self.grid_man.grid.is_chosen(*coll.coord):
                 coll = self.collapse_queue.get()
-            choice_id, choice_coords, choice_origin = self.collapse(coll)
+            choice_id = self.collapse(coll)
+            self.prop_queue.put(Propagation([choice_id], coll.coord))
+            self.propagate()
+            return choice_id, coll.coord
+            # choice_id, choice_coords, choice_origin = self.collapse(coll)
 
             # If the collapse resulted in a success, the choice's impact has to be propagated.
-            if choice_coords:
-                for coord in choice_coords:
-                    comm.communicate(f"Adding to prop queue: {choice_id, coord}")
-                    self.prop_queue.put(Propagation([choice_id], coord))
-                self.propagate()
-                if choice_id in self.terminals.keys():
-                    return choice_id, choice_coords, choice_origin
-        return None, None, None
+            # if choice_coords:
+            #     for coord in choice_coords:
+            #         comm.communicate(f"Adding to prop queue: {choice_id, coord}")
+            #         self.prop_queue.put(Propagation([choice_id], coord))
+            #     self.propagate()
+            #     if choice_id in self.terminals.keys():
+            #         return choice_id, choice_coords, choice_origin
+        # return None, None, None
+        return None
 
     def collapse_automatic(self):
         while not self.collapse_queue.empty():
@@ -108,25 +135,31 @@ class WFC:
         """
         (x, y, z) = coll.coord
         if not self.grid_man.grid.is_chosen(x, y, z):
-            choice_id, choice_origin = self.choose(x, y, z)
-            choice_extent = self.terminals[choice_id].extent.whd()
+            choice_id = self.choose(x, y, z)
+            self.grid_man.grid.set(x, y, z, choice_id)
+            self.grid_man.set_entropy(x, y, z, self._calc_entropy(1))
+            self.update_progress_counter(1)
+            return choice_id
+            # choice_id, choice_origin = self.choose(x, y, z)
+            # choice_extent = self.terminals[choice_id].extent.whd()
 
-            choice_coords = []
-            for x_i in range(choice_extent.x):
-                for y_i in range(choice_extent.y):
-                    for z_i in range(choice_extent.z):
-                        choice_grid_coord = choice_origin + Coord(x_i, y_i, z_i)
-                        self.grid_man.grid.set(*choice_grid_coord, choice_id)
-                        self.grid_man.set_entropy(
-                            *choice_grid_coord, self._calc_entropy(1)
-                        )
-                        choice_coords.append(choice_grid_coord)
+            # choice_coords = []
+            # for x_i in range(choice_extent.x):
+            #     for y_i in range(choice_extent.y):
+            #         for z_i in range(choice_extent.z):
+            #             choice_grid_coord = choice_origin + Coord(x_i, y_i, z_i)
+            #             self.grid_man.grid.set(*choice_grid_coord, choice_id)
+            #             self.grid_man.set_entropy(
+            #                 *choice_grid_coord, self._calc_entropy(1)
+            #             )
+            #             choice_coords.append(choice_grid_coord)
 
-            for _ in choice_coords:
-                self.update_progress_counter(1)
-            return choice_id, choice_coords, choice_origin
+            # for _ in choice_coords:
+            #     self.update_progress_counter(1)
+            # return choice_id, choice_coords, choice_origin
 
-        return None, None, None
+        return None
+        # return None, None, None
 
     def choose(self, x, y, z):
         """
@@ -141,16 +174,16 @@ class WFC:
         choice_weights = choices[:, 2]
 
         # For each allowed tile, check if it fits given the target cell's context.
-        for c_i in range(len(choices)):
-            choice = choice_ids[c_i]
-            terminal_extent = self.terminals[choice].extent.whd()
-            grid_mask = self.get_available_compatible_area(
-                choice, Coord(x, y, z), terminal_extent
-            )
-            valids = self.find_valid_arrangement(grid_mask, terminal_extent)
-            choice_sets[choice] = valids
-            if not valids:
-                choice_booleans[c_i] = False
+        # for c_i in range(len(choices)):
+        #     choice = choice_ids[c_i]
+        #     terminal_extent = self.terminals[choice].extent.whd()
+        #     grid_mask = self.get_available_compatible_area(
+        #         choice, Coord(x, y, z), terminal_extent
+        #     )
+        #     valids = self.find_valid_arrangement(grid_mask, terminal_extent)
+        #     choice_sets[choice] = valids
+        #     if not valids:
+        #         choice_booleans[c_i] = False
 
         choice_booleans_int_mask = np.asarray(choice_booleans, dtype=int)
 
@@ -158,33 +191,37 @@ class WFC:
             f"Choice booleans: {choice_booleans}; Ids: {choice_ids}; Weights: {choice_weights}"
         )
         weights = choice_weights * choice_booleans_int_mask
-        weight_sum = 1.0 / (np.sum(weights))
-        weights *= weight_sum
+
+        # Normalize weights
+        weights *= 1.0 / (np.sum(weights))
         comm.communicate(f"Weights: {weights}")
 
         # Make a weighted decision given the set of choices that fit.
         choice = np.random.choice(choice_ids, p=weights)
 
-        choice_origin_list = list(choice_sets[choice])
-        choice_origin_index = np.random.randint(len(choice_origin_list))
+        comm.communicate(f"Chosen: {choice} at {self.adj_matrix.atom_mapping[choice]}")
 
-        # Set of coordinates relative to the chosen tile.
-        choice_origin = choice_origin_list[choice_origin_index]
-        choice_extent = self.terminals[choice].extent.whd()
-        choice_center = choice_extent - Coord(
-            1, 1, 1
-        )  # Needed to determine what the origin coord of the placed tile is.
+        # choice_origin_list = list(choice_sets[choice])
+        # choice_origin_index = np.random.randint(len(choice_origin_list))
 
-        comm.communicate(f"valids: {valids}")
-        comm.communicate(
-            f"Chosen: {choice}; Location: {x,y,z}; Origin: {choice_origin}; Extent: {choice_extent}\n"
-        )
+        # # Set of coordinates relative to the chosen tile.
+        # choice_origin = choice_origin_list[choice_origin_index]
+        # choice_extent = self.terminals[choice].extent.whd()
+        # choice_center = choice_extent - Coord(
+        #     1, 1, 1
+        # )  # Needed to determine what the origin coord of the placed tile is.
 
-        choice_origin_grid_coord = (
-            Coord(x, y, z) + Coord(*choice_origin) - choice_center
-        )
+        # # comm.communicate(f"valids: {valids}")
+        # comm.communicate(
+        #     f"Chosen: {choice}; Location: {x,y,z}; Origin: {choice_origin}; Extent: {choice_extent}\n"
+        # )
 
-        return choice, choice_origin_grid_coord
+        # choice_origin_grid_coord = (
+        #     Coord(x, y, z) + Coord(*choice_origin) - choice_center
+        # )
+
+        # return choice, choice_origin_grid_coord
+        return choice
 
     def get_available_compatible_area(
         self, terminal_id: int, coord: Coord, extent: Coord
@@ -301,6 +338,7 @@ class WFC:
                     neigbour_w_choices[:, 0] = post
 
                     # Calculate entropy and get indices of allowed neighbour terminals
+                    # TODO: use np sum instead
                     neighbour_w_choices_i = [i for i in range(len(post)) if post[i]]
                     n_choices = len(neighbour_w_choices_i)
 
@@ -325,6 +363,9 @@ class WFC:
                     self.collapse_queue.put(
                         Collapse(self.grid_man.entropy.get(*n), n.to_tuple())
                     )
+
+    def get_atom_from_choice(self, choice):
+        return self.adj_matrix.atom_mapping[choice]
 
     def propagate(self):
         # Find cells that may be adjacent given the choice.

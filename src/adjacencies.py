@@ -43,38 +43,51 @@ class AdjacencyMatrix:
     part_adjacencies: set[Adjacency]
     terminals: list[Terminal] = field(default=None)
     offsets_dimensions: int = field(default=3)
-    adjacencies: set[Adjacency] = field(init=False)  # On atom level
+    adjacencies: set[Adjacency] = field(init=False)
     offsets: np.matrix = field(init=False)
     ADJ: dict[Offset, np.ndarray] = field(init=False)
     ADJ_W: dict[Offset, np.ndarray] = field(init=False)
     parts_to_index_mapping: bidict[int, int] = field(init=False)
 
+    atom_mapping: bidict = field(init=False)
+    atom_adjacency_matrix: dict[Offset, np.ndarray] = field(init=False)
+    atom_adjacency_matrix_w: dict[Offset, np.ndarray] = field(init=False)
+    part_atom_range_mapping: dict = field(init=False)
+
     def __post_init__(self):
-        self.atom_adjacencies()
+        self.atom_mapping = bidict()
+        self.atom_adjacency_matrix = {}
+        self.atom_adjacency_matrix_w = {}
+
+        self.part_atom_range_mapping = {}
+
         n_parts = len(self.parts)
         self.parts_to_index_mapping = bidict({self.parts[i]: i for i in range(n_parts)})
+
         self.offsets = OffsetFactory().get_offsets(
             dimensions=self.offsets_dimensions, cardinal=True
         )
+        self.atom_adjacencies()
+
         self.ADJ = {}
         self.ADJ_W = {}
         for offset in self.offsets:
             self.ADJ[offset] = np.full((n_parts, n_parts), False)
             self.ADJ_W[offset] = np.full((n_parts, n_parts), 0.0)
-        self.allow_adjacencies(self.adjacencies)
+        # self.allow_adjacencies(self.adjacencies)
+
+    def get_n_atoms(self):
+        return len(self.atom_mapping.keys())
 
     def atom_adjacencies(self):
-        self.atom_mapping = bidict()
-        self.atom_adjacency_matrix = {}
-        self.atom_adjacency_matrix_w = {}
-        offsets = OffsetFactory().get_offsets()
         n_atoms = 0
         # TODO use fold. Base the atoms on the occupied cells.
         for p in self.parts:
-            t_whd = self.terminals[p].extent.whd()
-            n_atoms += t_whd.x * t_whd.y * t_whd.z
+            t = self.terminals[p]
+            self.part_atom_range_mapping[p] = (n_atoms, n_atoms + t.n_atoms)
+            n_atoms += t.n_atoms
 
-        for o in offsets:
+        for o in self.offsets:
             self.atom_adjacency_matrix[o] = np.full((n_atoms, n_atoms), False)
             self.atom_adjacency_matrix_w[o] = np.full((n_atoms, n_atoms), 0.0)
 
@@ -92,7 +105,7 @@ class AdjacencyMatrix:
             for x in range(xyz.x):
                 for y in range(xyz.y):
                     for z in range(xyz.z):
-                        for o in offsets:
+                        for o in self.offsets:
                             this_index = self.atom_mapping.inverse[(p, Coord(x, y, z))]
                             try:
                                 other_index = self.atom_mapping.inverse[
@@ -115,14 +128,12 @@ class AdjacencyMatrix:
                                 other_index, this_index
                             ] = 1.0
 
-        for k in self.atom_adjacency_matrix.keys():
-            print(k, self.atom_adjacency_matrix[k])
-        print(self.atom_mapping)
+        # for k in self.atom_adjacency_matrix.keys():
+        #     print(k, self.atom_adjacency_matrix[k])
+        # print(self.atom_mapping)
 
         for a in self.part_adjacencies:
-            s = a.source
-            o = a.offset
-            self.atom_atom_adjacency(s, a.allowed_neighbours, o)
+            self.atom_atom_adjacency(a.source, a.allowed_neighbours, a.offset)
 
         # TODO: base calculation on heightmaps.
         # for p in self.part_adjacencies:
@@ -146,14 +157,17 @@ class AdjacencyMatrix:
         #     t_heightmaps = self.terminals[t].heightmaps
         #     # Get the complementing offset
         #     t_offset_hm = t_heightmaps[o.scaled(-1)]
-        for k in self.atom_adjacency_matrix.keys():
-            print(k, self.atom_adjacency_matrix[k])
-        print(self.atom_mapping)
-        pass
+        # for k in self.atom_adjacency_matrix.keys():
+        #     print(k, self.atom_adjacency_matrix[k])
+        # print(self.atom_mapping)
 
     def atom_atom_adjacency(
         self, source: int, allowed_neighbours: set[Relation], offset: Offset
     ):
+        """
+        Determines the adjacency of atoms of different parts.
+        For cuboids, each atom of part A at the meeting faces may be adjacent to any atom of part B at the opposite face and vice versa.
+        """
         source_wdh = self.terminals[source].extent.whd()
         n_dims = len(source_wdh)
 
@@ -213,11 +227,15 @@ class AdjacencyMatrix:
                                     self.atom_adjacency_matrix_w[offset_complement][
                                         o_index, s_index
                                     ] = n.weight
+                i = j  # Stop the looping when a pair has been found.
 
     def get_atom_index(self, part_id, coord):
         return self.atom_mapping.inverse[(part_id, coord)]
 
     def get_relative_atom_coord(self, n_dims, *tuples):
+        """
+        Returns the coord of an atom within the part it belongs to.
+        """
         assert len(tuples) == n_dims
         c = np.full(n_dims, None)
         for t in tuples:
@@ -245,11 +263,13 @@ class AdjacencyMatrix:
                         self.ADJ[neg_offset][neighbour_i, source_i] = True
                         self.ADJ_W[neg_offset][neighbour_i, source_i] = neighbour.weight
 
-    def get_adj(self, offset: Offset, part_id: int):
-        return self.ADJ[offset][self.parts_to_index_mapping[part_id]]
+    def get_adj(self, offset: Offset, choice_id: int):
+        return self.atom_adjacency_matrix[offset][choice_id]
+        # return self.ADJ[offset][self.parts_to_index_mapping[part_id]]
 
-    def get_adj_w(self, offset: Offset, part_id: int):
-        return self.ADJ_W[offset][self.parts_to_index_mapping[part_id]]
+    def get_adj_w(self, offset: Offset, choice_id: int):
+        return self.atom_adjacency_matrix_w[offset][choice_id]
+        # return self.ADJ_W[offset][self.parts_to_index_mapping[part_id]]
 
     def print_adj(self):
         for o, a in self.ADJ.items():
@@ -258,4 +278,5 @@ class AdjacencyMatrix:
                 print(i)
 
     def get_full(self, value):
-        return np.full((len(self.parts),), value)
+        return np.full((self.get_n_atoms()), value)
+        # return np.full((len(self.parts),), value)
