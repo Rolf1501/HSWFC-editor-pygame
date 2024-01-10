@@ -103,16 +103,16 @@ class WFC:
             coll = self.collapse_queue.get()
             while self.grid_man.grid.is_chosen(*coll.coord):
                 coll = self.collapse_queue.get()
-            choice_id = self.collapse(coll)
-            self.prop_queue.put(Propagation([choice_id], coll.coord))
+            choice_id, coord = self.collapse(coll)
+            self.prop_queue.put(Propagation([choice_id], coord))
             self.propagate()
-            return choice_id, coll.coord
-        return None
+            return choice_id, coord
+        return None, None
 
     def collapse_automatic(self):
-        while not self.collapse_queue.empty():
+        while not self.is_done():
             self.collapse_once()
-            self.propagate()
+            # self.propagate()
 
     def collapse(self, coll: Collapse) -> (int, Coord):
         """
@@ -124,8 +124,8 @@ class WFC:
             self.grid_man.grid.set(x, y, z, choice_id)
             self.grid_man.set_entropy(x, y, z, self._calc_entropy(1))
             self.update_progress_counter(1)
-            return choice_id
-        return None
+            return choice_id, Coord(x, y, z)
+        return None, None
         # return None, None, None
 
     def choose(self, x, y, z):

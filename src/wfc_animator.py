@@ -86,11 +86,17 @@ class WFCAnimator(Animator):
         self.accept("space", self.enable_collapse_once)
         self.accept("space-repeat", self.enable_collapse_once, [0.05])
         self.accept("1", self.toggle_hover)
+        self.accept("enter", self.full_throttle)
 
     def init_info_grid(self):
         self.create_grid()
 
     def full_throttle(self):
+        start = time()
+        comm.silence()
+        print(f"START: {start}")
+        self.wfc.collapse_automatic()
+        print(f"END: {time() - start}")
         self.paused = False
         self.collapse_repeat = True
         self.collapse_once = False
@@ -292,11 +298,12 @@ class WFCAnimator(Animator):
             # if id is not None:
             #     self.inform_animator_choice(id)
 
+            terminal_id, _ = self.wfc.adj_matrix.atom_mapping[id]
             comm.communicate(f"Placed: {id} at {coord}")
             self.add_model(
                 coord,
                 extent=Coord(1, 1, 1),
-                colour=Colour(0.5, 0, 0, 1),
+                colour=self.wfc.terminals[terminal_id].colour,
                 is_hidden=False,
             )
             self.collapse_once = False
@@ -316,7 +323,7 @@ class WFCAnimator(Animator):
     #         self.add_model(coord, extent=terminal.extent.whd(), colour=terminal.colour)
 
 
-# comm.silence()
+comm.silence()
 
 
 # terminals, adjs, def_w = Toy().example_slanted()
@@ -331,7 +338,7 @@ terminals, adjs, def_w = Toy().example_meta_tiles_simple()
 # terminals, adjs, def_w = Toy().example_meta_tiles()
 # terminals, adjs, def_w = Toy().example_meta_tiles_zebra_horizontal()
 
-grid_extent = Coord(10, 1, 10)
+grid_extent = Coord(100, 1, 100)
 # grid_extent = Coord(20,20,20)
 # grid_extent = Coord(6,5,6)
 start_coord = grid_extent * Coord(0.5, 0, 0.5)
