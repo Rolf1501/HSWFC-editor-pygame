@@ -291,10 +291,7 @@ class WFCAnimator(Animator):
             id, coord = self.wfc.collapse_once()
             # if id is not None:
             #     self.inform_animator_choice(id)
-            self.collapse_once = False
-            # id, _, origin = self.wfc.collapse_once()
-            # if id is not None and origin is not None:
-            #     self.inform_animator_choice(id, origin)
+
             comm.communicate(f"Placed: {id} at {coord}")
             self.add_model(
                 coord,
@@ -302,7 +299,7 @@ class WFCAnimator(Animator):
                 colour=Colour(0.5, 0, 0, 1),
                 is_hidden=False,
             )
-            # self.collapse_once = False
+            self.collapse_once = False
         return task.cont
 
     def inform_animator_choice(self, choice, coord):

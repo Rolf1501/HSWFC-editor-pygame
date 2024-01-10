@@ -460,10 +460,10 @@ class ToyExamples:
             Adjacency(1, {R(0, 1)}, Offset(*C.EAST.value), True),
             Adjacency(1, {R(0, 1)}, Offset(*C.SOUTH.value), True),
             Adjacency(1, {R(0, 1)}, Offset(*C.WEST.value), True),
-            # Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            # Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
-            # Adjacency(1, {R(1, 1)}, Offset(*C.SOUTH.value), True),
-            # Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
         }
 
         top_bottom_any = {
