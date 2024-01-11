@@ -75,6 +75,7 @@ class WFCAnimator(Animator):
         self.task_mgr.add(self.play, "play")
         self.task_mgr.add(self.wfc_collapse_once, "collapse")
         self.task_mgr.add(self.prop_info_hover, "prop_info")
+        self.task_mgr.add(self.enable_collapse_repeat, "enable_collapse_repeat")
 
     def init_key_events(self):
         self.accept("p", self.toggle_paused)
@@ -87,6 +88,8 @@ class WFCAnimator(Animator):
         self.accept("space-repeat", self.enable_collapse_once, [0.05])
         self.accept("1", self.toggle_hover)
         self.accept("enter", self.full_throttle)
+        self.accept("control-space", self.toggle_collapse_repeat)
+        self.accept("m", self.toggle_communicator)
 
     def init_info_grid(self):
         self.create_grid()
@@ -103,9 +106,9 @@ class WFCAnimator(Animator):
         self.step_size = 0
 
     def manual(self):
-        self.paused = True
+        self.paused = False
         self.collapse_repeat = False
-        self.collapse_once = True
+        self.collapse_once = False
         self.step_size = 0.05
 
     def toggle_paused(self):
@@ -115,22 +118,38 @@ class WFCAnimator(Animator):
         self.collapse_once = not self.collapse_once
         self.collapse_repeat = False
         comm.communicate(
-            f"Collapse once turned {'Off' if not self.collapse_repeat else 'On'}."
+            f"Collapse once turned {'On' if self.collapse_once else 'Off'}."
+        )
+
+    def toggle_collapse_repeat(self):
+        self.collapse_repeat = not self.collapse_repeat
+        comm.communicate(
+            f"Collapse repeat turned {'On' if self.collapse_repeat else 'Off'}."
         )
 
     def toggle_hover(self):
         self.hover_mode = not self.hover_mode
+
+    def toggle_communicator(self):
+        if comm.is_silent():
+            comm.restore()
+            comm.communicate("Turned communicator On")
+        else:
+            comm.communicate("Silenced communicator")
+            comm.silence()
+
+    def enable_collapse_repeat(self, task):
+        if self.collapse_repeat and not self.wfc.is_done():
+            self.enable_collapse_once(step_size=self.step_size)
+        return task.cont
 
     def enable_collapse_once(self, step_size=0):
         if not self.wfc.is_done():
             if not self.collapse_once:
                 if self.delta_collapse >= step_size:
                     self.collapse_once = True
-                    self.collapse_repeat = False
-                    comm.communicate(
-                        f"Collapse once turned {'Off' if not self.collapse_repeat else 'On'}."
-                    )
                     self.delta_collapse = 0
+                    comm.communicate("Collapsing once...")
                 else:
                     dt = self.clock.get_dt()
                     self.delta_collapse += dt
@@ -153,6 +172,12 @@ class WFCAnimator(Animator):
                         f"selected model: {picked_cell} at position: {coord}"
                     )
                     self.currently_picked_coord = coord
+                    try:
+                        comm.communicate(
+                            f"Prop status of {coord}: {self.wfc.get_prop_status(coord)}."
+                        )
+                    except:
+                        pass
                     return coord
         return None
 
@@ -285,47 +310,24 @@ class WFCAnimator(Animator):
 
         return task.cont
 
-    # def update_canvas(self, origin_coord: Coord, extent: Coord, key):
-    #     c_x, c_y, c_z = origin_coord
-    #     for x in range(extent.x):
-    #         for y in range(extent.y):
-    #             for z in range(extent.z):
-    #                 self.canvas.set(c_x + x, c_y + y, c_z + z, key)
-
     def wfc_collapse_once(self, task):
         if self.collapse_once:
             origin_coord, terminal_id, _ = self.wfc.collapse_once()
-            # id, coord = self.wfc.collapse_once()
-            # if id is not None:
-            #     self.inform_animator_choice(id)
 
-            # terminal_id, _ = self.wfc.adj_matrix.atom_mapping[id]
             comm.communicate(f"Placed: {terminal_id} at {origin_coord}")
             self.inform_animator_choice(terminal_id, origin_coord)
-            # self.add_model(
-            #     coord,
-            #     extent=Coord(1, 1, 1),
-            #     colour=self.wfc.terminals[terminal_id].colour,
-            #     is_hidden=False,
-            # )
+
             self.collapse_once = False
         return task.cont
 
     def inform_animator_choice(self, choice, coord):
-        # terminal_id, atom_coord = self.wfc.get_atom_from_choice(choice)
         terminal = self.wfc.terminals[choice]
         comm.communicate(f"Model {choice} added at {coord}")
         if terminal.colour:
             self.add_model(coord, extent=terminal.extent.whd(), colour=terminal.colour)
 
-    # def inform_animator_choice(self, choice, coord):
-    #     terminal = self.wfc.terminals[choice]
-    #     comm.communicate(f"Model {choice} added at {coord}")
-    #     if terminal.colour:
-    #         self.add_model(coord, extent=terminal.extent.whd(), colour=terminal.colour)
 
-
-comm.silence()
+# comm.silence()
 
 
 # terminals, adjs, def_w = Toy().example_slanted()
@@ -335,14 +337,18 @@ comm.silence()
 # terminals, adjs, def_w = Toy().example_zebra_vertical_3()
 # terminals, adjs, def_w = Toy().example_big_tiles()
 # terminals, adjs, def_w = Toy().example_meta_tiles_fit_area()
-terminals, adjs, def_w = Toy().example_meta_tiles_simple()
+terminals, adjs, def_w = Toy().example_meta_tiles_fit_area_simple()
+
+# terminals, adjs, def_w = Toy().example_meta_tiles_simple()
+# terminals, adjs, def_w = Toy().example_meta_tiles_simple_layered()
 # terminals, adjs, def_w = Toy().example_meta_tiles_2()
 # terminals, adjs, def_w = Toy().example_meta_tiles()
 # terminals, adjs, def_w = Toy().example_meta_tiles_zebra_horizontal()
 
-grid_extent = Coord(50, 1, 50)
+# grid_extent = Coord(50, 1, 50)
 # grid_extent = Coord(5, 1, 5)
-# grid_extent = Coord(20,20,20)
+grid_extent = Coord(5, 3, 5)
+# grid_extent = Coord(20, 20, 20)
 # grid_extent = Coord(6,5,6)
 start_coord = grid_extent * Coord(0.5, 0, 0.5)
 start_coord = Coord(int(start_coord.x), int(start_coord.y), int(start_coord.z))

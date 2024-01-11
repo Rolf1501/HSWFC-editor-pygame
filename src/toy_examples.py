@@ -72,7 +72,7 @@ class ToyExamples:
             ),  # 3x1; blue-purple ish
             3: Terminal(
                 BB.from_whd(2, 2, 2), symmetry_axes, side_desc, Colour(0.8, 0.1, 0.2, 1)
-            ),  # 3x1; red ish
+            ),  # 2x2; red ish
             -1: Void(BB.from_whd(1, 1, 1), colour=Colour(1, 1, 1, 0.5)),
         }
 
@@ -101,6 +101,48 @@ class ToyExamples:
             Adjacency(
                 3, {R(0, 1), R(1, 1), R(2, 1), R(3, 1)}, Offset(*C.WEST.value), True
             ),
+        }
+
+        top_bottom_any = {
+            AdjacencyAny(i, o, True, 1)
+            for i in terminals
+            for o in [Offset(*C.TOP.value), Offset(*C.BOTTOM.value)]
+        }
+        void_any = {
+            AdjacencyAny(-1, o, True, 0.001) for o in OffsetFactory().get_offsets()
+        }  # Void may be placed next to anything
+        return (
+            terminals,
+            adjacencies.union(top_bottom_any).union(void_any),
+            {0: 1, 1: 1, 2: 1, 3: 1, -1: 0.001},
+        )
+
+    def example_meta_tiles_fit_area_simple(
+        symmetry_axes=full_symmetric_axes(), side_desc=SD()
+    ):
+        terminals = {
+            0: Terminal(
+                BB.from_whd(2, 2, 1), symmetry_axes, side_desc, Colour(0.3, 0.6, 0.6, 1)
+            ),  # 2x3; turquoise ish
+            1: Terminal(
+                BB.from_whd(3, 1, 2), symmetry_axes, side_desc, Colour(0.8, 0.3, 0, 1)
+            ),  # 4x2; orange ish
+            -1: Void(BB.from_whd(1, 1, 1), colour=Colour(1, 1, 1, 0.5)),
+        }
+
+        adjacencies = {
+            Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.TOP.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.BOTTOM.value), True),
+            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.WEST.value), True),
+            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.TOP.value), True),
+            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.BOTTOM.value), True),
         }
 
         top_bottom_any = {
@@ -460,6 +502,63 @@ class ToyExamples:
             Adjacency(1, {R(0, 1)}, Offset(*C.EAST.value), True),
             Adjacency(1, {R(0, 1)}, Offset(*C.SOUTH.value), True),
             Adjacency(1, {R(0, 1)}, Offset(*C.WEST.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
+        }
+
+        top_bottom_any = {
+            AdjacencyAny(i, o, True, 1)
+            for i in terminals
+            for o in [Offset(*C.TOP.value), Offset(*C.BOTTOM.value)]
+        }
+        void_any = {
+            AdjacencyAny(2, o, True, 0.001) for o in OffsetFactory().get_offsets()
+        }  # Void may be placed next to anything
+
+        return (
+            terminals,
+            adjacencies.union(top_bottom_any).union(void_any),
+            {0: 1, 1: 1, 2: 0.001},
+        )
+
+    def example_meta_tiles_simple_layered(
+        symmetry_axes=full_symmetric_axes(), side_desc=SD()
+    ):
+        x, y, z = 2, 1, 2
+        mask412 = np.full((x, y, z), True)
+        terminals = {
+            0: Terminal(
+                BB.from_whd(x, y, z),
+                symmetry_axes,
+                side_desc,
+                Colour(0.3, 0.6, 0.6, 1),
+                mask=mask412,
+            ),  # 4x2; cyan ish
+            1: Terminal(
+                BB.from_whd(x, y, z),
+                symmetry_axes,
+                side_desc,
+                Colour(0.8, 0.3, 0, 1),
+                mask=mask412,
+            ),  # 4x2; orangeish
+            2: Void(BB.from_whd(1, 1, 1), Colour(1, 1, 1, 0.5)),
+        }
+
+        adjacencies = {
+            # Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
+            # Adjacency(0, {R(0, 1)}, Offset(*C.EAST.value), True),
+            # Adjacency(0, {R(0, 1)}, Offset(*C.SOUTH.value), True),
+            # Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
+            Adjacency(1, {R(0, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(1, {R(0, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(1, {R(0, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(1, {R(0, 1)}, Offset(*C.WEST.value), True),
+            Adjacency(1, {R(0, 1)}, Offset(*C.TOP.value), True),
+            Adjacency(1, {R(0, 1)}, Offset(*C.BOTTOM.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.BOTTOM.value), True),
             Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
             Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
             Adjacency(1, {R(1, 1)}, Offset(*C.SOUTH.value), True),

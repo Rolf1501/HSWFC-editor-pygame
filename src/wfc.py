@@ -57,6 +57,12 @@ class WFC:
         self.adj_matrix = AdjacencyMatrix(
             keys, self.adjacencies, terminals=self.terminals
         )
+        print("Atom ADJ:")
+        for o in self.adj_matrix.atom_adjacency_matrix:
+            print(f"Offset: {o}")
+            print(self.adj_matrix.atom_adjacency_matrix[o])
+        print(self.adj_matrix.part_atom_range_mapping)
+        print(self.adj_matrix.atom_mapping)
         self.grid_man = GridManager(*self.grid_extent)
         self.offsets = OffsetFactory().get_offsets(3)
 
@@ -103,14 +109,13 @@ class WFC:
             while self.grid_man.grid.is_chosen(*coll.coord):
                 coll = self.collapse_queue.get()
             origin_coord, t_id, affected_cells = self.collapse(coll)
-            # choice_id, coord = self.collapse(coll)
 
             for c in affected_cells:
                 coord, id = c
 
                 self.prop_queue.put(Propagation([id], coord))
                 # self.prop_queue.put(Propagation([choice_id], coord))
-                self.propagate()
+            self.propagate()
             return origin_coord, t_id, affected_cells
         return None, None, None
 
@@ -123,7 +128,7 @@ class WFC:
 
     def collapse(self, coll: Collapse):
         """
-        Collapses a the cell at the given coordinate. After making a choice, all covered cells are updated.
+        Collapses a cell at the given coordinate. After making a choice, all covered cells are updated.
         """
         (x, y, z) = coll.coord
         if not self.grid_man.grid.is_chosen(x, y, z):
@@ -149,6 +154,10 @@ class WFC:
                         dtype=bool,
                     )
                     choices = self.grid_man.choice_booleans.get(*affected_cell_coord)
+                    if self.grid_man.grid.is_chosen(*affected_cell_coord):
+                        comm.communicate(
+                            f"Cell {affected_cell_coord} is already chosen!"
+                        )
                     (range_start, range_end) = self.get_terminal_range(t_id)
 
                     sub_choices = np.asarray(choices[range_start:range_end], dtype=bool)
@@ -156,6 +165,8 @@ class WFC:
                     # Find the index of a shared atom.
                     comparison = relative_mask & sub_choices
                     c_index = np.argmax(comparison)
+
+                    # Check is needed, since argmax may return the index that is False.
                     if comparison[c_index]:
                         comm.communicate("ATOM ALLOWED!")
                         atom_id = self.adj_matrix.atom_mapping.inverse[
@@ -168,9 +179,9 @@ class WFC:
                         )
 
             for c in affected_cells:
-                (x, y, z), id = c
-                self.grid_man.grid.set(x, y, z, id)
-                self.grid_man.set_entropy(x, y, z, self._calc_entropy(1))
+                coord, id = c
+                self.grid_man.grid.set(*coord, id)
+                self.grid_man.set_entropy(*coord, self._calc_entropy(1))
                 self.update_progress_counter(1)
             comm.communicate(f"Covered: {affected_cells}")
             return origin_coord, t_id, affected_cells
@@ -200,7 +211,9 @@ class WFC:
         # Make a weighted decision given the set of choices that fit.
         choice = np.random.choice(choice_ids, p=weights)
 
-        comm.communicate(f"Chosen: {choice} at {self.adj_matrix.atom_mapping[choice]}")
+        comm.communicate(
+            f"Chosen: {choice} {self.adj_matrix.atom_mapping[choice]} at {x,y,z}"
+        )
 
         return choice
 
@@ -238,9 +251,7 @@ class WFC:
                 ) or self.grid_man.grid.is_chosen(*n):
                     continue
 
-                comm.communicate(
-                    f"Considering neighbour: {n} with choices {cs} at offset {o}"
-                )
+                # comm.communicate(f"Considering neighbour: {n} at offset {o}")
 
                 remaining_choices = self.adj_matrix.get_full(False)
 
@@ -254,15 +265,14 @@ class WFC:
                 pre = np.asarray(neigbour_b_choices, dtype=bool)
 
                 post = pre & remaining_choices
-
-                if sum(post) == 0:
-                    continue
+                comm.communicate(
+                    f"Available choices from instigator to neighbour {n}:\n{remaining_choices}\n{pre}"
+                )
 
                 for i in cs:
                     neigbour_w_choices += self.adj_matrix.get_adj_w(o, int(i))
                 self.grid_man.choice_weights.set(*n, neigbour_w_choices)
 
-                # comm.communicate(f"\tUpdated weights to: {neigbour_w_choices[:,2]}")
                 if np.any(pre != post):
                     comm.communicate(f"\tUpdated choices to: {post}")
                     neigbour_b_choices = post
@@ -299,7 +309,12 @@ class WFC:
                 comm.communicate(f"Affected by prop: {cell}")
 
     def get_prop_status(self, coord: Coord):
-        return self.grid_man.choice_booleans.get(*coord)
+        return [
+            self.adj_matrix.atom_mapping[id]
+            for id in self.grid_man.choice_ids.get(*coord)[
+                self.grid_man.choice_booleans.get(*coord)
+            ]
+        ]
 
     def update_progress_counter(self, increment: int):
         self.counter += increment
@@ -314,6 +329,9 @@ class WFC:
             print(
                 f"STATUS: {progress}%. Processed {self.counter}/{self.total_cells} cells"
             )
+
+    def format_choices(self, x, y, z):
+        formatted = f""""""
 
     def _calc_entropy(self, n_choices):
         """

@@ -11,6 +11,7 @@ class Verbosity(Enum):
 class Communicator(object):
     def __init__(self, verbosity: Verbosity = Verbosity.HIGH):
         self.verbosity = verbosity
+        self.default_verbosity = verbosity
 
     def __new__(cls):
         if not hasattr(cls, "instance"):
@@ -30,3 +31,9 @@ class Communicator(object):
 
     def silence(self):
         self.set_verbosity(Verbosity.SILENT)
+
+    def restore(self):
+        self.set_verbosity(self.default_verbosity)
+
+    def is_silent(self):
+        return self.verbosity == Verbosity.SILENT

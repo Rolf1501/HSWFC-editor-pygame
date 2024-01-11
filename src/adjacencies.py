@@ -171,11 +171,11 @@ class AdjacencyMatrix:
         source_wdh = self.terminals[source].extent.whd()
         n_dims = len(source_wdh)
 
-        # Infer the direction from the offset.
+        # Infer the axis from the offset.
         offset_index = np.abs(np.array(offset)).argmax()
         offset_complement = offset.scaled(-1)
 
-        # If 1, take last slice. Otherwise, first slice
+        # The direction is signed. The meeting face is the last slice in a positive direction. The first slice otherwise.
         source_slice = source_wdh[offset_index] - 1 if offset[offset_index] == 1 else 0
 
         for n in allowed_neighbours:

@@ -18,19 +18,18 @@ class Terminal:
     mask: np.ndarray = field(default=None)
     unique_orientations: int = field(init=False)
     atom_indices: np.ndarray = field(init=False)
-    atom_mask: np.ndarray = field(
-        init=False
-    )  # 4D array for storing which cell contains which atom.
+    atom_mask: np.ndarray = field(init=False)
     heightmaps: dict = field(init=False)
     n_atoms: int = field(init=False)
 
     def __post_init__(self):
+        if self.mask is None:
+            self.mask = np.full(self.extent.whd(), True)
         # Find all cells in the mask that are not empty, these are the atoms uniquely identified by their index.
         non_empty_cells = np.transpose(self.mask.nonzero())
-        self.atom_indices = [Coord(yxz[0], yxz[1], yxz[2]) for yxz in non_empty_cells]
+        self.atom_indices = [Coord(xyz[0], xyz[1], xyz[2]) for xyz in non_empty_cells]
         whd = self.extent.whd()
 
-        # TODO: check if this is right.
         self.atom_mask = np.full((whd.y, whd.x, whd.z, len(self.atom_indices)), False)
         self.n_atoms = len(self.atom_indices)
 
