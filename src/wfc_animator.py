@@ -56,7 +56,7 @@ class WFCAnimator(Animator):
         self.collision_traverser = CollisionTraverser()
         self.collision_handler_queue = CollisionHandlerQueue()
 
-        self.init_info_grid()
+        # self.init_info_grid()
         self.init_key_events()
         self.init_mouse_events()
         self.init_tasks()
@@ -149,7 +149,6 @@ class WFCAnimator(Animator):
                 if self.delta_collapse >= step_size:
                     self.collapse_once = True
                     self.delta_collapse = 0
-                    comm.communicate("Collapsing once...")
                 else:
                     dt = self.clock.get_dt()
                     self.delta_collapse += dt
@@ -327,7 +326,7 @@ class WFCAnimator(Animator):
             self.add_model(coord, extent=terminal.extent.whd(), colour=terminal.colour)
 
 
-# comm.silence()
+comm.silence()
 
 
 # terminals, adjs, def_w = Toy().example_slanted()
@@ -337,18 +336,18 @@ class WFCAnimator(Animator):
 # terminals, adjs, def_w = Toy().example_zebra_vertical_3()
 # terminals, adjs, def_w = Toy().example_big_tiles()
 # terminals, adjs, def_w = Toy().example_meta_tiles_fit_area()
-terminals, adjs, def_w = Toy().example_meta_tiles_fit_area_simple()
+# terminals, adjs, def_w = Toy().example_meta_tiles_fit_area_simple()
 
 # terminals, adjs, def_w = Toy().example_meta_tiles_simple()
-# terminals, adjs, def_w = Toy().example_meta_tiles_simple_layered()
+terminals, adjs, def_w = Toy().example_meta_tiles_layered()
 # terminals, adjs, def_w = Toy().example_meta_tiles_2()
 # terminals, adjs, def_w = Toy().example_meta_tiles()
 # terminals, adjs, def_w = Toy().example_meta_tiles_zebra_horizontal()
 
 # grid_extent = Coord(50, 1, 50)
 # grid_extent = Coord(5, 1, 5)
-grid_extent = Coord(5, 3, 5)
-# grid_extent = Coord(20, 20, 20)
+# grid_extent = Coord(5, 3, 5)
+grid_extent = Coord(20, 20, 20)
 # grid_extent = Coord(6,5,6)
 start_coord = grid_extent * Coord(0.5, 0, 0.5)
 start_coord = Coord(int(start_coord.x), int(start_coord.y), int(start_coord.z))

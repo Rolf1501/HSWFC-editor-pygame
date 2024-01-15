@@ -103,18 +103,18 @@ class WFC:
         Performs a single collapse for the first next unchosen tile.
         Returns the chosen terminal id, covered cell coordinates and the origin coordinate of the placed tile.
         """
-        comm.communicate(f"Collapsing once.")
+        comm.communicate(f"Collapsing once...")
         if not self.collapse_queue.empty():
             coll = self.collapse_queue.get()
+
+            # Keep cycling through the queue until an unchosen cell is found.
             while self.grid_man.grid.is_chosen(*coll.coord):
                 coll = self.collapse_queue.get()
             origin_coord, t_id, affected_cells = self.collapse(coll)
 
             for c in affected_cells:
                 coord, id = c
-
                 self.prop_queue.put(Propagation([id], coord))
-                # self.prop_queue.put(Propagation([choice_id], coord))
             self.propagate()
             return origin_coord, t_id, affected_cells
         return None, None, None
@@ -134,14 +134,13 @@ class WFC:
         if not self.grid_man.grid.is_chosen(x, y, z):
             choice_id = self.choose(x, y, z)
 
-            # TODO: perform collapse on molecular level
             # Get terminal and relative coord
             t_id, t_coord = self.adj_matrix.atom_mapping[choice_id]
             terminal = self.terminals[t_id]
             # Find originating cell to host part.
-            origin_coord = Coord(x, y, z) - t_coord
+            coord = Coord(x, y, z)
+            origin_coord = coord - t_coord
 
-            # TODO: make use of np boolean masks
             # Update the affected cells.
             affected_cells = []
             for atom_index in terminal.atom_indices:
@@ -149,43 +148,35 @@ class WFC:
                 comm.communicate(f"Affected cell coord: {affected_cell_coord}")
                 if self.grid_man.grid.within_bounds(*affected_cell_coord):
                     # Compare the mask of the terminal to the currently available choices and ensure that the terminal atom is allowed.
-                    relative_mask = np.asarray(
-                        terminal.atom_mask[atom_index.y, atom_index.x, atom_index.z],
-                        dtype=bool,
-                    )
+                    relative_mask = terminal.atom_mask[
+                        atom_index.y, atom_index.x, atom_index.z
+                    ]
                     choices = self.grid_man.choice_booleans.get(*affected_cell_coord)
-                    if self.grid_man.grid.is_chosen(*affected_cell_coord):
-                        comm.communicate(
-                            f"Cell {affected_cell_coord} is already chosen!"
-                        )
+
+                    # Select the choices of the current cell that correspond to those of the chosen terminal.
                     (range_start, range_end) = self.get_terminal_range(t_id)
+                    sub_choices = choices[range_start:range_end]
 
-                    sub_choices = np.asarray(choices[range_start:range_end], dtype=bool)
-
-                    # Find the index of a shared atom.
+                    # Intersection of allowed choices.
                     comparison = relative_mask & sub_choices
-                    c_index = np.argmax(comparison)
 
-                    # Check is needed, since argmax may return the index that is False.
-                    if comparison[c_index]:
-                        comm.communicate("ATOM ALLOWED!")
-                        atom_id = self.adj_matrix.atom_mapping.inverse[
-                            (t_id, atom_index)
-                        ]
-                        affected_cells.append((affected_cell_coord, atom_id))
-                    else:
-                        comm.communicate(
-                            f"ATOM not allowed...{c_index} RM: {relative_mask} SC: {sub_choices}"
-                        )
+                    # Catch cases where the intersection yielded no True values.
+                    assert len(comparison.nonzero()[0]) > 0
 
-            for c in affected_cells:
-                coord, id = c
-                self.grid_man.grid.set(*coord, id)
-                self.grid_man.set_entropy(*coord, self._calc_entropy(1))
-                self.update_progress_counter(1)
+                    atom_id = self.adj_matrix.atom_mapping.inverse[(t_id, atom_index)]
+                    affected_cells.append((affected_cell_coord, atom_id))
+
+                    # Make sure the results take effect.
+                    self.set_occupied(*affected_cell_coord, atom_id)
+
             comm.communicate(f"Covered: {affected_cells}")
             return origin_coord, t_id, affected_cells
         return None, None, None
+
+    def set_occupied(self, x, y, z, id):
+        self.grid_man.grid.set(x, y, z, id)
+        self.grid_man.set_entropy(x, y, z, self._calc_entropy(1))
+        self.update_progress_counter(1)
 
     def choose(self, x, y, z):
         """

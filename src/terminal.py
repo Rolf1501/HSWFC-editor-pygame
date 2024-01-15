@@ -17,7 +17,7 @@ class Terminal:
     orientation: C = field(default=C.NORTH)
     mask: np.ndarray = field(default=None)
     unique_orientations: int = field(init=False)
-    atom_indices: np.ndarray = field(init=False)
+    atom_indices: np.ndarray = field(init=None)
     atom_mask: np.ndarray = field(init=False)
     heightmaps: dict = field(init=False)
     n_atoms: int = field(init=False)

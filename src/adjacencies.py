@@ -74,7 +74,6 @@ class AdjacencyMatrix:
         for offset in self.offsets:
             self.ADJ[offset] = np.full((n_parts, n_parts), False)
             self.ADJ_W[offset] = np.full((n_parts, n_parts), 0.0)
-        # self.allow_adjacencies(self.adjacencies)
 
     def get_n_atoms(self):
         return len(self.atom_mapping.keys())
@@ -94,7 +93,7 @@ class AdjacencyMatrix:
         for p in self.parts:
             t = self.terminals[p]
             xyz = t.extent.whd()
-            # Need to create mapping first.
+            # To keep track of what atom corresponds to which coordinate, a mapping is created.
             for x in range(xyz.x):
                 for y in range(xyz.y):
                     for z in range(xyz.z):
@@ -102,11 +101,15 @@ class AdjacencyMatrix:
                         self.atom_mapping[k] = (p, Coord(x, y, z))
 
             # Make sure that the atoms of the same part have to be together.
+            # An adjacency constraint, only allowing the other neighbouring atom of the same part atom enforces this.
             for x in range(xyz.x):
                 for y in range(xyz.y):
                     for z in range(xyz.z):
                         for o in self.offsets:
                             this_index = self.atom_mapping.inverse[(p, Coord(x, y, z))]
+
+                            # Not all atoms have a neigbour of the same part in all offsets.
+                            # The try-except block catches invalid combinations.
                             try:
                                 other_index = self.atom_mapping.inverse[
                                     (p, Coord(x, y, z) + o)
@@ -265,11 +268,9 @@ class AdjacencyMatrix:
 
     def get_adj(self, offset: Offset, choice_id: int):
         return self.atom_adjacency_matrix[offset][choice_id]
-        # return self.ADJ[offset][self.parts_to_index_mapping[part_id]]
 
     def get_adj_w(self, offset: Offset, choice_id: int):
         return self.atom_adjacency_matrix_w[offset][choice_id]
-        # return self.ADJ_W[offset][self.parts_to_index_mapping[part_id]]
 
     def print_adj(self):
         for o, a in self.ADJ.items():
@@ -279,4 +280,3 @@ class AdjacencyMatrix:
 
     def get_full(self, value):
         return np.full((self.get_n_atoms()), value)
-        # return np.full((len(self.parts),), value)

@@ -523,59 +523,62 @@ class ToyExamples:
             {0: 1, 1: 1, 2: 0.001},
         )
 
-    def example_meta_tiles_simple_layered(
-        symmetry_axes=full_symmetric_axes(), side_desc=SD()
-    ):
-        x, y, z = 2, 1, 2
-        mask412 = np.full((x, y, z), True)
+    def example_meta_tiles_layered(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
+        x0, y0, z0 = 4, 1, 2
+        x1, y1, z1 = 2, 1, 3
+        mask0 = np.full((x0, y0, z0), True)
+        mask1 = np.full((x1, y1, z1), True)
         terminals = {
             0: Terminal(
-                BB.from_whd(x, y, z),
+                BB.from_whd(x0, y0, z0),
                 symmetry_axes,
                 side_desc,
                 Colour(0.3, 0.6, 0.6, 1),
-                mask=mask412,
-            ),  # 4x2; cyan ish
+                mask=mask0,
+            ),  # cyan ish
             1: Terminal(
-                BB.from_whd(x, y, z),
+                BB.from_whd(x1, y1, z1),
                 symmetry_axes,
                 side_desc,
                 Colour(0.8, 0.3, 0, 1),
-                mask=mask412,
-            ),  # 4x2; orangeish
+                mask=mask1,
+            ),  # orangeish
             2: Void(BB.from_whd(1, 1, 1), Colour(1, 1, 1, 0.5)),
         }
 
         adjacencies = {
-            # Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            # Adjacency(0, {R(0, 1)}, Offset(*C.EAST.value), True),
-            # Adjacency(0, {R(0, 1)}, Offset(*C.SOUTH.value), True),
-            # Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.TOP.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.BOTTOM.value), True),
             Adjacency(1, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.SOUTH.value), True),
             Adjacency(1, {R(0, 1)}, Offset(*C.WEST.value), True),
             Adjacency(1, {R(0, 1)}, Offset(*C.TOP.value), True),
             Adjacency(1, {R(0, 1)}, Offset(*C.BOTTOM.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.BOTTOM.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
+            # Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
+            # Adjacency(1, {R(1, 1)}, Offset(*C.BOTTOM.value), True),
+            # Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
+            # Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
+            # Adjacency(1, {R(1, 1)}, Offset(*C.SOUTH.value), True),
+            # Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
         }
 
-        top_bottom_any = {
-            AdjacencyAny(i, o, True, 1)
-            for i in terminals
-            for o in [Offset(*C.TOP.value), Offset(*C.BOTTOM.value)]
-        }
-        void_any = {
-            AdjacencyAny(2, o, True, 0.001) for o in OffsetFactory().get_offsets()
-        }  # Void may be placed next to anything
+        # top_bottom_any = {
+        #     AdjacencyAny(i, o, True, 1)
+        #     for i in terminals
+        #     for o in [Offset(*C.TOP.value), Offset(*C.BOTTOM.value)]
+        # }
+        # void_any = {
+        #     AdjacencyAny(2, o, True, 0.001) for o in OffsetFactory().get_offsets()
+        # }  # Void may be placed next to anything
 
         return (
             terminals,
-            adjacencies.union(top_bottom_any).union(void_any),
+            adjacencies,
+            # adjacencies.union(top_bottom_any).union(void_any),
             {0: 1, 1: 1, 2: 0.001},
         )

@@ -104,7 +104,7 @@ class GridManager:
             for h in range(self.height):
                 for d in range(self.depth):
                     self.choice_booleans.set(
-                        w, h, d, np.asarray(default_choice_b, dtype=float)
+                        w, h, d, np.asarray(default_choice_b, dtype=bool)
                     )
                     self.choice_ids.set(
                         w, h, d, np.asarray(default_choice_id, dtype=float)
