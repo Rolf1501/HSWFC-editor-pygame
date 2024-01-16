@@ -57,12 +57,7 @@ class WFC:
         self.adj_matrix = AdjacencyMatrix(
             keys, self.adjacencies, terminals=self.terminals
         )
-        print("Atom ADJ:")
-        for o in self.adj_matrix.atom_adjacency_matrix:
-            print(f"Offset: {o}")
-            print(self.adj_matrix.atom_adjacency_matrix[o])
-        print(self.adj_matrix.part_atom_range_mapping)
-        print(self.adj_matrix.atom_mapping)
+
         self.grid_man = GridManager(*self.grid_extent)
         self.offsets = OffsetFactory().get_offsets(3)
 
@@ -242,8 +237,6 @@ class WFC:
                 ) or self.grid_man.grid.is_chosen(*n):
                     continue
 
-                # comm.communicate(f"Considering neighbour: {n} at offset {o}")
-
                 remaining_choices = self.adj_matrix.get_full(False)
 
                 # Find the union of allowed neighbours terminals given the set of choices of the current cell.
@@ -320,9 +313,6 @@ class WFC:
             print(
                 f"STATUS: {progress}%. Processed {self.counter}/{self.total_cells} cells"
             )
-
-    def format_choices(self, x, y, z):
-        formatted = f""""""
 
     def _calc_entropy(self, n_choices):
         """

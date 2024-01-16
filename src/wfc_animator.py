@@ -43,6 +43,7 @@ class WFCAnimator(Animator):
         self.info_grid = Grid(grid_w, grid_h, grid_d, default_fill_value=None)
 
         self.shown_model_index = 0
+        self.pending_models = 0
 
         self.manual()
 
@@ -296,10 +297,11 @@ class WFCAnimator(Animator):
         self.colours.get(x, y, z).put(self.make_material(new_colour))
 
     def play(self, task):
-        if self.delta_acc >= self.step_size:
+        if self.delta_acc >= self.step_size or self.pending_models > 0:
             if not self.paused:
                 self.show_next(pause=False)
                 self.delta_acc = 0
+                self.pending_models = max(self.pending_models - 1, 0)
         else:
             dt = self.clock.get_dt()
             self.delta_acc += dt
@@ -321,6 +323,7 @@ class WFCAnimator(Animator):
         comm.communicate(f"Model {choice} added at {coord}")
         if terminal.colour:
             colour_v = self.colour_variation(terminal.colour)
+            self.pending_models += len(terminal.atom_indices)
             for atom_index in terminal.atom_indices:
                 model_path = terminal.atom_index_to_id_mapping[atom_index].path
                 self.add_model(coord + atom_index, path=model_path, colour=colour_v)
@@ -348,7 +351,6 @@ terminals, adjs, def_w = Toy().example_meta_tiles_layered()
 # grid_extent = Coord(5, 1, 5)
 # grid_extent = Coord(5, 3, 5)
 grid_extent = Coord(15, 15, 15)
-# grid_extent = Coord(6,5,6)
 start_coord = grid_extent * Coord(0.5, 0, 0.5)
 start_coord = Coord(int(start_coord.x), int(start_coord.y), int(start_coord.z))
 
@@ -370,7 +372,7 @@ anim = WFCAnimator(
 anim_init_time = time() - start_time - wfc_init_time
 print(f"Anim init time: {anim_init_time}")
 
-print("Running WFC")
+print("WFC ready")
 
 # run_time = time() - anim_init_time - wfc_init_time - start_time
 # print(f"Running time: {run_time}")
