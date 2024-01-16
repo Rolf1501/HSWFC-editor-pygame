@@ -1,6 +1,6 @@
 from terminal import Terminal, Void
 from boundingbox import BoundingBox as BB
-from side_properties import SidesDescriptor as SD, SideProperties as SP
+from side_descriptor import SidesDescriptor as SD, SideProperties as SP
 from adjacencies import Adjacency, AdjacencyAny, Relation as R
 from offsets import Offset, OffsetFactory
 from util_data import Cardinals as C, Dimensions as D, Colour
@@ -18,16 +18,16 @@ class ToyExamples:
             D.Z: {D.Y, D.X},
         }
 
-    def example_meta_tiles_2(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
+    def example_meta_tiles_2(symmetry_axes=full_symmetric_axes()):
         terminals = {
             0: Terminal(
-                BB.from_whd(2, 1, 3), symmetry_axes, side_desc, Colour(0.3, 0.6, 0.6, 1)
+                BB.from_whd(2, 1, 3), symmetry_axes, Colour(0.3, 0.6, 0.6, 1)
             ),  # 2x3; turquoise ish
             1: Terminal(
-                BB.from_whd(4, 1, 2), symmetry_axes, side_desc, Colour(0.8, 0.3, 0, 1)
+                BB.from_whd(4, 1, 2), symmetry_axes, Colour(0.8, 0.3, 0, 1)
             ),  # 4x2; orange ish
             2: Terminal(
-                BB.from_whd(3, 1, 1), symmetry_axes, side_desc, Colour(0.2, 0.1, 0.8, 1)
+                BB.from_whd(3, 1, 1), symmetry_axes, Colour(0.2, 0.1, 0.8, 1)
             ),  # 3x1; blue-purple ish
             -1: Void(BB.from_whd(1, 1, 1), Colour(1, 1, 1, 0.5)),
         }
@@ -57,21 +57,19 @@ class ToyExamples:
         }  # Void may be placed next to anything
         return terminals, adjacencies.union(top_bottom_any).union(void_any), None
 
-    def example_meta_tiles_fit_area(
-        symmetry_axes=full_symmetric_axes(), side_desc=SD()
-    ):
+    def example_meta_tiles_fit_area(symmetry_axes=full_symmetric_axes()):
         terminals = {
             0: Terminal(
-                BB.from_whd(2, 1, 3), symmetry_axes, side_desc, Colour(0.3, 0.6, 0.6, 1)
+                BB.from_whd(2, 1, 3), symmetry_axes, Colour(0.3, 0.6, 0.6, 1)
             ),  # 2x3; turquoise ish
             1: Terminal(
-                BB.from_whd(4, 1, 2), symmetry_axes, side_desc, Colour(0.8, 0.3, 0, 1)
+                BB.from_whd(4, 1, 2), symmetry_axes, Colour(0.8, 0.3, 0, 1)
             ),  # 4x2; orange ish
             2: Terminal(
-                BB.from_whd(3, 1, 1), symmetry_axes, side_desc, Colour(0.2, 0.1, 0.8, 1)
+                BB.from_whd(3, 1, 1), symmetry_axes, Colour(0.2, 0.1, 0.8, 1)
             ),  # 3x1; blue-purple ish
             3: Terminal(
-                BB.from_whd(2, 2, 2), symmetry_axes, side_desc, Colour(0.8, 0.1, 0.2, 1)
+                BB.from_whd(2, 2, 2), symmetry_axes, Colour(0.8, 0.1, 0.2, 1)
             ),  # 2x2; red ish
             -1: Void(BB.from_whd(1, 1, 1), colour=Colour(1, 1, 1, 0.5)),
         }
@@ -117,15 +115,13 @@ class ToyExamples:
             {0: 1, 1: 1, 2: 1, 3: 1, -1: 0.001},
         )
 
-    def example_meta_tiles_fit_area_simple(
-        symmetry_axes=full_symmetric_axes(), side_desc=SD()
-    ):
+    def example_meta_tiles_fit_area_simple(symmetry_axes=full_symmetric_axes()):
         terminals = {
             0: Terminal(
-                BB.from_whd(2, 2, 1), symmetry_axes, side_desc, Colour(0.3, 0.6, 0.6, 1)
+                BB.from_whd(2, 2, 1), symmetry_axes, Colour(0.3, 0.6, 0.6, 1)
             ),  # 2x3; turquoise ish
             1: Terminal(
-                BB.from_whd(3, 1, 2), symmetry_axes, side_desc, Colour(0.8, 0.3, 0, 1)
+                BB.from_whd(3, 1, 2), symmetry_axes, Colour(0.8, 0.3, 0, 1)
             ),  # 4x2; orange ish
             -1: Void(BB.from_whd(1, 1, 1), colour=Colour(1, 1, 1, 0.5)),
         }
@@ -159,18 +155,16 @@ class ToyExamples:
             {0: 1, 1: 1, 2: 1, 3: 1, -1: 0.001},
         )
 
-    def example_meta_tiles_zebra_horizontal(
-        symmetry_axes=full_symmetric_axes(), side_desc=SD()
-    ):
+    def example_meta_tiles_zebra_horizontal(symmetry_axes=full_symmetric_axes()):
         terminals = {
             0: Terminal(
-                BB.from_whd(3, 1, 1), symmetry_axes, side_desc, Colour(0.3, 0.6, 0.6, 1)
+                BB.from_whd(3, 1, 1), symmetry_axes, Colour(0.3, 0.6, 0.6, 1)
             ),  # 2x3; turquoise ish
             1: Terminal(
-                BB.from_whd(3, 1, 1), symmetry_axes, side_desc, Colour(0.8, 0.3, 0, 1)
+                BB.from_whd(3, 1, 1), symmetry_axes, Colour(0.8, 0.3, 0, 1)
             ),  # 4x2; orange ish
-            # 2: Terminal(BB.from_whd(3,1,1), symmetry_axes, side_desc, Colour(0.2,0.1,0.8,1)), # 3x1; blue-purple ish
-            # 3: Terminal(BB.from_whd(2,2,2), symmetry_axes, side_desc, Colour(0.8,0.1,0.2,1)), # 3x1; red ish
+            # 2: Terminal(BB.from_whd(3,1,1), symmetry_axes, Colour(0.2,0.1,0.8,1)), # 3x1; blue-purple ish
+            # 3: Terminal(BB.from_whd(2,2,2), symmetry_axes, Colour(0.8,0.1,0.2,1)), # 3x1; red ish
             # -1: Void(BB.from_whd(1,1,1)),
         }
 
@@ -201,13 +195,13 @@ class ToyExamples:
         # void_any = {AdjacencyAny(-1, o, True, 0.001) for o in OffsetFactory().get_offsets()} # Void may be placed next to anything
         return terminals, adjacencies.union(top_bottom_any), None
 
-    def example_meta_tiles(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
+    def example_meta_tiles(symmetry_axes=full_symmetric_axes()):
         terminals = {
             0: Terminal(
-                BB.from_whd(2, 1, 3), symmetry_axes, side_desc, Colour(0.3, 0.6, 0.6, 1)
+                BB.from_whd(2, 1, 3), symmetry_axes, Colour(0.3, 0.6, 0.6, 1)
             ),  # 2x3; cyan ish
             1: Terminal(
-                BB.from_whd(4, 1, 2), symmetry_axes, side_desc, Colour(0.8, 0.3, 0, 1)
+                BB.from_whd(4, 1, 2), symmetry_axes, Colour(0.8, 0.3, 0, 1)
             ),  # 4x2; orangeish
             2: Void(BB.from_whd(1, 1, 1)),
         }
@@ -237,7 +231,7 @@ class ToyExamples:
         }  # Void may be placed next to anything
         return terminals, adjacencies.union(top_bottom_any).union(void_any), None
 
-    def example_big_tiles(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
+    def example_big_tiles(symmetry_axes=full_symmetric_axes()):
         terminals = {
             # For a cuboid with vertex ids:
             #   7------6
@@ -355,13 +349,13 @@ class ToyExamples:
 
         return terminals, adjs.union(top_bottom_any), None
 
-    def example_zebra_horizontal(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
+    def example_zebra_horizontal(symmetry_axes=full_symmetric_axes()):
         terminals = {
             0: Terminal(
-                BB.from_whd(1, 1, 1), symmetry_axes, side_desc, Colour(1, 1, 1, 1)
+                BB.from_whd(1, 1, 1), symmetry_axes, Colour(1, 1, 1, 1)
             ),  # white
             1: Terminal(
-                BB.from_whd(1, 1, 1), symmetry_axes, side_desc, Colour(0, 0, 0, 1)
+                BB.from_whd(1, 1, 1), symmetry_axes, Colour(0, 0, 0, 1)
             ),  # black
         }
 
@@ -376,16 +370,16 @@ class ToyExamples:
 
         return terminals, adjs
 
-    def example_zebra_horizontal_3(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
+    def example_zebra_horizontal_3(symmetry_axes=full_symmetric_axes()):
         terminals = {
             0: Terminal(
-                BB.from_whd(1, 1, 1), symmetry_axes, side_desc, Colour(1, 1, 1, 1)
+                BB.from_whd(1, 1, 1), symmetry_axes, Colour(1, 1, 1, 1)
             ),  # white
             1: Terminal(
-                BB.from_whd(1, 1, 1), symmetry_axes, side_desc, Colour(0, 0, 0, 1)
+                BB.from_whd(1, 1, 1), symmetry_axes, Colour(0, 0, 0, 1)
             ),  # black
             2: Terminal(
-                BB.from_whd(1, 1, 1), symmetry_axes, side_desc, Colour(1, 1, 0, 1)
+                BB.from_whd(1, 1, 1), symmetry_axes, Colour(1, 1, 0, 1)
             ),  # yellow
         }
 
@@ -403,16 +397,16 @@ class ToyExamples:
 
         return terminals, adjs, None
 
-    def example_zebra_vertical_3(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
+    def example_zebra_vertical_3(symmetry_axes=full_symmetric_axes()):
         terminals = {
             0: Terminal(
-                BB.from_whd(1, 1, 1), symmetry_axes, side_desc, Colour(1, 1, 1, 1)
+                BB.from_whd(1, 1, 1), symmetry_axes, Colour(1, 1, 1, 1)
             ),  # white
             1: Terminal(
-                BB.from_whd(1, 1, 1), symmetry_axes, side_desc, Colour(0, 0, 0, 1)
+                BB.from_whd(1, 1, 1), symmetry_axes, Colour(0, 0, 0, 1)
             ),  # black
             2: Terminal(
-                BB.from_whd(1, 1, 1), symmetry_axes, side_desc, Colour(1, 1, 0, 1)
+                BB.from_whd(1, 1, 1), symmetry_axes, Colour(1, 1, 0, 1)
             ),  # yellow
         }
 
@@ -430,15 +424,14 @@ class ToyExamples:
 
         return terminals, adjs, None
 
-    def example_zebra_vertical(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
+    def example_zebra_vertical(symmetry_axes=full_symmetric_axes()):
         terminals = {
             0: Terminal(
-                BB.from_whd(1, 1, 1), symmetry_axes, side_desc, Colour(0.7, 0.7, 0.7, 1)
+                BB.from_whd(1, 1, 1), symmetry_axes, Colour(0.7, 0.7, 0.7, 1)
             ),  # white
             1: Terminal(
                 BB.from_whd(1, 1, 1),
                 symmetry_axes,
-                side_desc,
                 Colour(0.05, 0.05, 0.05, 1),
             ),  # black
         }
@@ -454,11 +447,9 @@ class ToyExamples:
 
         return terminals, adjs, None
 
-    def example_slanted(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
+    def example_slanted(symmetry_axes=full_symmetric_axes()):
         terminals = {
-            0: Terminal(
-                BB.from_whd(1, 1, 1), symmetry_axes, side_desc, Colour(0.8, 0, 0, 1)
-            ),
+            0: Terminal(BB.from_whd(1, 1, 1), symmetry_axes, Colour(0.8, 0, 0, 1)),
             1: Void(BB.from_whd(1, 1, 1)),
         }
 
@@ -472,21 +463,19 @@ class ToyExamples:
         }
         return terminals, adjs, None
 
-    def example_meta_tiles_simple(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
+    def example_meta_tiles_simple(symmetry_axes=full_symmetric_axes()):
         x, y, z = 2, 1, 2
-        mask412 = np.full((x, y, z), True)
+        mask412 = np.full((y, x, z), True)
         terminals = {
             0: Terminal(
                 BB.from_whd(x, y, z),
                 symmetry_axes,
-                side_desc,
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask412,
             ),  # 4x2; cyan ish
             1: Terminal(
                 BB.from_whd(x, y, z),
                 symmetry_axes,
-                side_desc,
                 Colour(0.8, 0.3, 0, 1),
                 mask=mask412,
             ),  # 4x2; orangeish
@@ -523,23 +512,21 @@ class ToyExamples:
             {0: 1, 1: 1, 2: 0.001},
         )
 
-    def example_meta_tiles_layered(symmetry_axes=full_symmetric_axes(), side_desc=SD()):
+    def example_meta_tiles_layered(symmetry_axes=full_symmetric_axes()):
         x0, y0, z0 = 4, 1, 2
         x1, y1, z1 = 2, 1, 3
-        mask0 = np.full((x0, y0, z0), True)
-        mask1 = np.full((x1, y1, z1), True)
+        mask0 = np.full((y0, x0, z0), True)
+        mask1 = np.full((y1, x1, z1), True)
         terminals = {
             0: Terminal(
                 BB.from_whd(x0, y0, z0),
                 symmetry_axes,
-                side_desc,
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask0,
             ),  # cyan ish
             1: Terminal(
                 BB.from_whd(x1, y1, z1),
                 symmetry_axes,
-                side_desc,
                 Colour(0.8, 0.3, 0, 1),
                 mask=mask1,
             ),  # orangeish

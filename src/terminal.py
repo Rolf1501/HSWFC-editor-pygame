@@ -1,9 +1,11 @@
 from dataclasses import dataclass, field
 import numpy as np
+
+from atom import Atom
 from boundingbox import BoundingBox as BB
 from coord import Coord
 from offsets import Offset
-from side_properties import SidesDescriptor
+from side_descriptor import SidesDescriptor as SD
 from util_data import Dimensions as D, Cardinals as C, Colour
 
 
@@ -11,25 +13,27 @@ from util_data import Dimensions as D, Cardinals as C, Colour
 class Terminal:
     extent: BB  # BB with extent relative to grid units
     symmetry_axes: dict[D, set[D]]
-    side_descriptor: SidesDescriptor
     colour: Colour
     up: C = field(default=C.TOP)
     orientation: C = field(default=C.NORTH)
     mask: np.ndarray = field(default=None)
     unique_orientations: int = field(init=False)
-    atom_indices: np.ndarray = field(init=None)
+    atom_indices: np.ndarray = field(init=False)
     atom_mask: np.ndarray = field(init=False)
     heightmaps: dict = field(init=False)
     n_atoms: int = field(init=False)
+    atom_index_to_id_mapping: dict[Coord, Atom] = field(init=False)
 
     def __post_init__(self):
         if self.mask is None:
             self.mask = np.full(self.extent.whd(), True)
+
+        self.atom_index_to_id_mapping = {}
         # Find all cells in the mask that are not empty, these are the atoms uniquely identified by their index.
         non_empty_cells = np.transpose(self.mask.nonzero())
-        self.atom_indices = [Coord(xyz[0], xyz[1], xyz[2]) for xyz in non_empty_cells]
-        whd = self.extent.whd()
+        self.atom_indices = [Coord(xyz[1], xyz[0], xyz[2]) for xyz in non_empty_cells]
 
+        whd = self.extent.whd()
         self.atom_mask = np.full((whd.y, whd.x, whd.z, len(self.atom_indices)), False)
         self.n_atoms = len(self.atom_indices)
 
@@ -38,6 +42,19 @@ class Terminal:
             c = self.atom_indices[i]
             curr = self.atom_mask[c.y, c.x, c.z]
             curr[i] = True
+
+        # Determine which atom index requires which specific atom model.
+        for i in self.atom_indices:
+            x, y, z = i
+            bottom = True if y - 1 > 0 and self.mask[y - 1, x, z] else False
+            top = True if y + 1 < whd.y and self.mask[y + 1, x, z] else False
+            west = True if x - 1 > 0 and self.mask[y, x - 1, z] else False
+            east = True if x + 1 < whd.x and self.mask[y, x + 1, z] else False
+            south = True if z - 1 > 0 and self.mask[y, x, z - 1] else False
+            north = True if z + 1 < whd.z and self.mask[y, x, z + 1] else False
+            sd = SD(bottom, top, west, east, south, north)
+            self.atom_index_to_id_mapping[i] = Atom(sd)
+
         self.calc_heightmaps()
 
     def calc_heightmaps(self):

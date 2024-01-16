@@ -254,31 +254,28 @@ class WFCAnimator(Animator):
         extent: Coord = Coord(1, 1, 1),
         path="parts/1x1x1.glb",
         colour: Colour = Colour(1, 1, 0, 1),
-        colour_variation: Colour = Colour(0.1, 0.1, 0.1, 0),
         is_hidden=True,
     ):
         """
         Adds a model placed on the corresponding grid/canvas cells.
         The model is added to a dictionary, so it can be modified later.
-        The grid/canvas keeps a references the model via the model's key.
         """
 
+        self.make_model(origin_coord, extent, path, colour, is_hidden=is_hidden)
+
+    def colour_variation(
+        self, colour: Colour, colour_variation=Colour(0.1, 0.1, 0.1, 0)
+    ):
         def rand_sign():
             return 1 if random() < 0.5 else -1
 
         # Add some variation to make the parts distinguishable.
-        colour_v = Colour(
+        return Colour(
             colour.r + random() * colour_variation.r * rand_sign(),
             colour.g + random() * colour_variation.g * rand_sign(),
             colour.b + random() * colour_variation.b * rand_sign(),
             colour.a + random() * colour_variation.a * rand_sign(),
         )
-        _, new_key = self.make_model(
-            origin_coord, extent, path, colour_v, is_hidden=is_hidden
-        )
-
-        # self.add_colour_mode(*origin_coord, colour)
-        # self.update_canvas(origin_coord, extent, new_key)
 
     def show_next(self, pause=True):
         if pause:
@@ -323,7 +320,10 @@ class WFCAnimator(Animator):
         terminal = self.wfc.terminals[choice]
         comm.communicate(f"Model {choice} added at {coord}")
         if terminal.colour:
-            self.add_model(coord, extent=terminal.extent.whd(), colour=terminal.colour)
+            colour_v = self.colour_variation(terminal.colour)
+            for atom_index in terminal.atom_indices:
+                model_path = terminal.atom_index_to_id_mapping[atom_index].path
+                self.add_model(coord + atom_index, path=model_path, colour=colour_v)
 
 
 comm.silence()
@@ -347,7 +347,7 @@ terminals, adjs, def_w = Toy().example_meta_tiles_layered()
 # grid_extent = Coord(50, 1, 50)
 # grid_extent = Coord(5, 1, 5)
 # grid_extent = Coord(5, 3, 5)
-grid_extent = Coord(20, 20, 20)
+grid_extent = Coord(15, 15, 15)
 # grid_extent = Coord(6,5,6)
 start_coord = grid_extent * Coord(0.5, 0, 0.5)
 start_coord = Coord(int(start_coord.x), int(start_coord.y), int(start_coord.z))
