@@ -35,12 +35,15 @@ class Terminal:
 
         whd = self.extent.whd()
         self.atom_mask = np.full((whd.y, whd.x, whd.z, len(self.atom_indices)), False)
+        self.atom_coord_mask = np.full((whd.y, whd.x, whd.z), None)
+
         self.n_atoms = len(self.atom_indices)
 
         # Set the corresponding atoms' cells to True.
         for i in range(len(self.atom_indices)):
             c = self.atom_indices[i]
             curr = self.atom_mask[c.y, c.x, c.z]
+            self.atom_coord_mask[c.y, c.x, c.z] = Coord(x, y, z)
             curr[i] = True
 
         # Determine which atom index requires which specific atom model.

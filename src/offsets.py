@@ -26,6 +26,9 @@ class Offset(namedtuple("Offset", ["x", "y", "z"])):
     def scaled(self, scalar):
         return Offset(self.x * scalar, self.y * scalar, self.z * scalar)
 
+    def complement(self):
+        return self.scaled(-1)
+
 
 @dataclass
 class OffsetFactory:

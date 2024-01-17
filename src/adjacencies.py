@@ -157,28 +157,37 @@ class AdjacencyMatrix:
     def atom_atom_heightmap_adjacency(self):
         for a in self.part_adjacencies:
             this = self.terminals[a.source]
-            that = [self.terminals[n.other] for n in a.allowed_neighbours]
-            for t in that:
-                pass
+
+            offset_direction_index = np.nonzero(a.offset.to_numpy_array())[0][0]
+            relative_depth_this = this.extent.whd()[offset_direction_index]
+            for allowed_neighbour in a.allowed_neighbours:
+                diffs = self.min_distance_diffs_from_heightmaps(
+                    a.source, allowed_neighbour.other, relative_depth_this, a.offset
+                )
 
         pass
 
-    def atom_adjacency_from_heightmaps(
-        self,
-        this_heightmap: np.ndarray,
-        that_heightmap: np.ndarray,
-        this_max_depth: int,
-        that_max_depth: int,
+    def min_distance_diffs_from_heightmaps(
+        self, this_id: int, that_id: int, offset: Offset
     ):
         """
         Finds the atom adjacencies based on the heightmaps.
         Slides that heightmap over this heightmap and find the minimal offset such that the surfaces represented by the heightmaps touch each other.
         """
+        this_terminal = self.terminals[this_id]
+        that_terminal = self.terminals[that_id]
+        this_heightmap = this_terminal.heightmaps[offset]
+        that_heightmap = this_terminal.heightmaps[offset.complement()]
+        offset_direction_index = np.nonzero(offset.to_numpy_array())[0][0]
+        this_max_depth = this_terminal.extent.whd()[offset_direction_index]
+        that_max_depth = that_terminal.extent.whd()[offset_direction_index]
         (this_y, this_x) = this_heightmap.shape
         (that_y, that_x) = that_heightmap.shape
 
         # By selecting the smaller heightmap as the base, the number of checks for touching surfaces is reduced.
         if this_x * this_y < that_x * that_y:
+            base_terminal = this_terminal
+            slider_terminal = that_terminal
             base = this_heightmap
             slider = that_heightmap
             base_depth = this_max_depth
@@ -188,6 +197,10 @@ class AdjacencyMatrix:
             max_x_slider = that_x
             max_y_slider = that_y
         else:
+            base_terminal = that_terminal
+            slider_terminal = this_terminal
+            # Switch the offset, since the base and slider are swapped compared to the input.
+            offset = offset.complement()
             base = that_heightmap
             slider = this_heightmap
             base_depth = that_max_depth
@@ -200,25 +213,47 @@ class AdjacencyMatrix:
         n_shifts_x = this_x + that_x - 1
         n_shifts_y = this_y + that_y - 1
 
-        # The flipped slider allows for aligning the two heightmaps more easily. Prevents having to deal with index manipulation.
-        flipped = np.flip(slider)
-
+        max_x_index_slider = max_x_slider - 1
+        max_x_index_base = max_x_base - 1
+        max_y_index_slider = max_y_slider - 1
+        max_y_index_base = max_y_base - 1
         for y in range(n_shifts_y):
-            # The slider slides over the base. The range covered in the base depends on the slider.
-            y_base_s, y_base_e = self.sliding_range(y, max_y_base, max_y_slider)
+            start_y_slider = max_y_index_slider - y  # Offset by y.
 
-            # The slider slides over the base. The range covered in the slider depends on the base.
-            y_slider_s, y_slider_e = self.sliding_range(y, max_y_slider, max_y_base)
+            # Do not exceed the slider window's bounds.
+            # The window may not exceed the y length of the base window.
+            end_y_slider = min(max_y_index_slider, start_y_slider + max_y_index_base)
 
+            # Stays 0 until y is larger than the slider, at which point the base start should start to increase as well.
+            start_y_base = max(y - end_y_slider, 0)
+
+            # Do not exceed the slider window's bounds.
+            # When the slider's coverage is smaller than the base window y, the base window should not exceed the y length of the slider.
+            end_y_base = min(
+                max_y_base - 1, start_y_base + end_y_slider - start_y_slider
+            )
             for x in range(n_shifts_x):
-                # The slider slides over the base. The range covered in the base depends on the slider.
-                x_base_s, x_base_e = self.sliding_range(x, max_x_base, max_x_slider)
+                start_x_slider = max_x_index_slider - x  # Offset by x.
 
-                # The slider slides over the base. The range covered in the slider depends on the base.
-                x_slider_s, x_slider_e = self.sliding_range(x, max_x_slider, max_x_base)
+                # Do not exceed the slider window's bounds.
+                # The window may not exceed the x length of the base window.
+                end_x_slider = min(
+                    max_x_index_slider, start_x_slider + max_x_index_base
+                )
 
-                base_window = base[y_base_s:y_base_e, x_base_s, x_base_e]
-                slider_window = flipped[y_slider_s:y_slider_e, x_slider_s:x_slider_e]
+                # Stays 0 until x is larger than the slider, at which point the base start should start to increase as well.
+                start_x_base = max(x - end_x_slider, 0)
+
+                # Do not exceed the slider window's bounds.
+                # When the slider's coverage is smaller than the base window x, the base window should not exceed the x length of the slider.
+                end_x_base = min(
+                    max_x_base - 1, start_x_base + end_x_slider - start_x_slider
+                )
+
+                base_window = base[start_y_base:end_y_base, start_x_base, end_x_base]
+                slider_window = slider[
+                    start_y_slider:end_y_slider, start_x_slider, end_x_slider
+                ]
 
                 # TODO: infer range of empty space from heightmaps in other directions.
 
@@ -228,12 +263,65 @@ class AdjacencyMatrix:
                 ):
                     continue
 
-                # Otherwise, take the minimal distance between potential contact points.
+                # Otherwise, take the minimal distance between potential contact points by overlapping the windows.
                 distance = base_window + slider_window
-                min_distance_coord = np.argmin(distance, axis=1)
+                min_distance = np.min(distance)
+
+                sign = offset[offset_direction_index]  # Relative to the base.
+
+                # In case of 0 distance, need to compare two slices.
+                # For each additional distance, need one more slice from each terminal.
+
+                base_slice_indices = np.array(
+                    [(start_y_base, end_y_base), (start_x_base, end_x_base)]
+                )
+
+                slider_slice_indices = np.array(
+                    [(start_y_slider, end_y_slider), (start_x_slider, end_x_slider)]
+                )
+
+                if sign < 0:
+                    # Insert the depth specification in the direction corresponding to the offset.
+                    base_slice_indices = np.insert(
+                        base_slice_indices, (0, 1 + min_distance), axis=0
+                    )
+
+                    slider_slice_indices = np.insert(
+                        slider_slice_indices, (-1 - min_distance, -1), axis=0
+                    )
+                else:
+                    # Insert the depth specification in the direction corresponding to the offset.
+                    base_slice_indices = np.insert(
+                        base_slice_indices, (-1 - min_distance, -1), axis=0
+                    )
+
+                    slider_slice_indices = np.insert(
+                        slider_slice_indices, (0, 1 + min_distance), axis=0
+                    )
+                    pass
+
+                # Select the volumes in the terminal masks that corresponds to the overlaid heightmaps and distance found.
+                base_slice = base_terminal.atom_coord_mask[
+                    base_slice_indices[0, 0] : base_slice_indices[0, 1],
+                    base_slice_indices[1, 0] : base_slice_indices[1, 1],
+                    base_slice_indices[2, 0] : base_slice_indices[2, 1],
+                ]
+                slider_slice = slider_terminal.atom_coord_mask[
+                    slider_slice_indices[0, 0] : slider_slice_indices[0, 1],
+                    slider_slice_indices[1, 0] : slider_slice_indices[1, 1],
+                    slider_slice_indices[2, 0] : slider_slice_indices[2, 1],
+                ]
+
+                # TODO: iterate over the volumes to find adjacent atoms of belonging to different terminals.
+                slice_y, slice_x = base_slice.shape
+                for y in range(slice_y):
+                    for x in range(slice_x):
+                        pass
+                for o in self.offsets:
+                    pass
 
                 # TODO: translate the masks onto each other depending on the found distance.
-
+                pass
         return
 
     def sliding_range(self, index, max_this, max_that):
