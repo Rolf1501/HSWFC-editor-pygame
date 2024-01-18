@@ -463,6 +463,44 @@ class ToyExamples:
         }
         return terminals, adjs, None
 
+    def example_two_tiles(symmetry_axes=full_symmetric_axes()):
+        x, y, z = 2, 1, 2
+        mask0 = np.full((y, x, z), True)
+        mask0[0, 1, 1] = False  # Create a small L shape
+
+        terminals = {
+            0: Terminal(
+                BB.from_whd(x, y, z),
+                symmetry_axes,
+                Colour(0.3, 0.6, 0.6, 1),
+                mask=mask0,
+            ),
+            1: Terminal(
+                BB.from_whd(x, y, z), symmetry_axes, Colour(0.8, 0.3, 0, 1), mask=mask0
+            ),
+        }
+
+        adjacencies = {
+            Adjacency(1, {R(0, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(1, {R(0, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(1, {R(0, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(1, {R(0, 1)}, Offset(*C.WEST.value), True),
+            # Adjacency(0, {R(1, 1)}, Offset(*C.NORTH.value), True),
+            # Adjacency(0, {R(1, 1)}, Offset(*C.EAST.value), True),
+            # Adjacency(0, {R(1, 1)}, Offset(*C.SOUTH.value), True),
+            # Adjacency(0, {R(1, 1)}, Offset(*C.WEST.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
+            # Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
+            # Adjacency(1, {R(1, 1)}, Offset(*C.BOTTOM.value), True),
+            # Adjacency(0, {R(0, 1)}, Offset(*C.TOP.value), True),
+            # Adjacency(0, {R(0, 1)}, Offset(*C.BOTTOM.value), True),
+        }
+
+        return terminals, adjacencies, None
+
     def example_meta_tiles_simple(symmetry_axes=full_symmetric_axes()):
         x, y, z = 2, 1, 2
         mask412 = np.full((y, x, z), True)

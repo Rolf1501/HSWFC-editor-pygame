@@ -20,6 +20,7 @@ class Terminal:
     unique_orientations: int = field(init=False)
     atom_indices: np.ndarray = field(init=False)
     atom_mask: np.ndarray = field(init=False)
+    atom_coord_mask: np.ndarray = field(init=False)
     heightmaps: dict = field(init=False)
     n_atoms: int = field(init=False)
     atom_index_to_id_mapping: dict[Coord, Atom] = field(init=False)
@@ -43,7 +44,7 @@ class Terminal:
         for i in range(len(self.atom_indices)):
             c = self.atom_indices[i]
             curr = self.atom_mask[c.y, c.x, c.z]
-            self.atom_coord_mask[c.y, c.x, c.z] = Coord(x, y, z)
+            self.atom_coord_mask[c.y, c.x, c.z] = Coord(c.x, c.y, c.z)
             curr[i] = True
 
         # Determine which atom index requires which specific atom model.
@@ -67,9 +68,9 @@ class Terminal:
         self.heightmaps = {}
         # TODO: verify whether the mapping of axis to cardinal is correct.
         axes = {
-            0: (Offset.from_cardinal(C.TOP), Offset.from_cardinal(C.BOTTOM)),
-            1: (Offset.from_cardinal(C.EAST), Offset.from_cardinal(C.WEST)),
-            2: (Offset.from_cardinal(C.NORTH), Offset.from_cardinal(C.SOUTH)),
+            0: (Offset.from_cardinal(C.BOTTOM), Offset.from_cardinal(C.TOP)),
+            1: (Offset.from_cardinal(C.WEST), Offset.from_cardinal(C.EAST)),
+            2: (Offset.from_cardinal(C.SOUTH), Offset.from_cardinal(C.NORTH)),
         }
         for axis in axes.keys():
             cardinal_along, cardinal_against = axes[axis]

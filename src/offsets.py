@@ -17,7 +17,9 @@ class Offset(namedtuple("Offset", ["x", "y", "z"])):
     def from_cardinal(cls, cardinal: C):
         return Offset(*cardinal.value)
 
-    def to_numpy_array(self):
+    def to_numpy_array(self, use_numpy_axes=False):
+        if use_numpy_axes:
+            return np.asarray([self.y, self.x, self.z])
         return np.asarray([*self])
 
     def negation(self):
