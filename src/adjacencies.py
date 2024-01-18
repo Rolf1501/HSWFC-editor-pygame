@@ -150,7 +150,7 @@ class AdjacencyMatrix:
         this_terminal = self.terminals[this_id]
         that_terminal = self.terminals[that_id]
         this_heightmap = this_terminal.heightmaps[offset]
-        that_heightmap = this_terminal.heightmaps[offset.complement()]
+        that_heightmap = that_terminal.heightmaps[offset.complement()]
         offset_direction_index = np.nonzero([offset.y, offset.x, offset.z])[0][0]
         this_max_depth = this_terminal.mask.shape[offset_direction_index]
         that_max_depth = that_terminal.mask.shape[offset_direction_index]
@@ -172,8 +172,9 @@ class AdjacencyMatrix:
             base_id = this_id
             slider_id = that_id
             print(offset)
-            print(base)
-            print(slider)
+            print(f"base_id: {base_id}; slider_id: {slider_id}")
+            print(f"base hm: {base}")
+            print(f"slider hm: {slider}")
             print(base_terminal.mask)
             print(slider_terminal.mask)
         else:
