@@ -242,38 +242,14 @@ class AdjacencyMatrix:
         max_y_index_base = max_y_base - 1
 
         for y in range(n_shifts_y):
-            # start_y_slider = max(0, max_y_index_slider - y)  # Offset by y.
-
-            # # Do not exceed the slider window's bounds.
-            # # The window may not exceed the y length of the base window.
-            # end_y_slider = (
-            #     min(max_y_index_slider, max_y_index_base + max_y_index_slider - y)
-            #     + 1
-            #     # min(max_y_index_slider, start_y_slider + max_y_index_base) + 1
-            # )
             start_y_slider, end_y_slider = calc_slider_range(
                 max_y_index_slider, max_y_index_base, y
             )
 
-            # Stays 0 until y is larger than the slider, at which point the base start should start to increase as well.
-            # start_y_base = max(y - end_y_slider, 0)
-
-            # end_y_base = (
-            #     min(max_y_index_base, start_y_base + end_y_slider - start_y_slider)
-            #     + 1
-            #     # min(max_y_base - 1, start_y_base + end_y_slider - start_y_slider) + 1
-            # )
             start_y_base, end_y_base = calc_base_range(
                 max_y_index_base, start_y_slider, end_y_slider, y
             )
             for x in range(n_shifts_x):
-                # start_x_slider = max(0, max_x_index_slider - x)  # Offset by x.
-
-                # # Do not exceed the slider window's bounds.
-                # # The window may not exceed the x length of the base window.
-                # end_x_slider = (
-                #     min(max_x_index_slider, start_x_slider + max_x_index_base) + 1
-                # )
                 start_x_slider, end_x_slider = calc_slider_range(
                     max_x_index_slider, max_x_index_slider, x
                 )
@@ -284,16 +260,6 @@ class AdjacencyMatrix:
                     end_x_slider,
                     x,
                 )
-
-                # # Stays 0 until x is larger than the slider, at which point the base start should start to increase as well.
-                # start_x_base = max(x - end_x_slider + 1, 0)
-
-                # # Do not exceed the slider window's bounds.
-                # # When the slider's coverage is smaller than the base window x, the base window should not exceed the x length of the slider.
-                # end_x_base = (
-                #     min(max_x_base - 1, start_x_base + end_x_slider - start_x_slider)
-                #     + 1
-                # )
 
                 base_window = base[start_y_base:end_y_base, start_x_base:end_x_base]
                 slider_window = slider[
@@ -318,7 +284,6 @@ class AdjacencyMatrix:
 
                 # In case of 0 distance, need to compare two slices.
                 # For each additional distance, need one more slice from each terminal.
-
                 base_slice_indices = np.array(
                     [(start_y_base, end_y_base), (start_x_base, end_x_base)]
                 )

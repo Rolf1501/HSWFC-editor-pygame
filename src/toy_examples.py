@@ -504,8 +504,8 @@ class ToyExamples:
     def example_two_tiles_3D(symmetry_axes=full_symmetric_axes()):
         x, y, z = 2, 2, 2
         mask0 = np.full((y, x, z), True)
+        mask0[0, 0, 0] = False  # Create a small L shape
         mask0[0, 1, 0] = False  # Create a small L shape
-        mask0[1, 1, 0] = False  # Create a small L shape
 
         terminals = {
             0: Terminal(

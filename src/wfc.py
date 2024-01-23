@@ -156,6 +156,7 @@ class WFC:
                     comparison = relative_mask & sub_choices
 
                     # Catch cases where the intersection yielded no True values.
+                    # TODO This should signal backtracking or exception handling, since the current configuration is unsolvable.
                     assert len(comparison.nonzero()[0]) > 0
 
                     atom_id = self.adj_matrix.atom_mapping.inverse[(t_id, atom_index)]
