@@ -250,7 +250,7 @@ class WFC:
 
                 post = pre & remaining_choices
                 comm.communicate(
-                    f"Available choices from instigator to neighbour {n}:\n{remaining_choices}\n{pre}"
+                    f"Available choices from instigator to neighbour {n}:\n{np.asarray(remaining_choices,dtype=int)}\n{np.asarray(pre,dtype=int)}"
                 )
 
                 for i in cs:
@@ -258,7 +258,9 @@ class WFC:
                 self.grid_man.choice_weights.set(*n, neigbour_w_choices)
 
                 if np.any(pre != post):
-                    comm.communicate(f"\tUpdated choices to: {post}")
+                    comm.communicate(
+                        f"\tUpdated choices to:\n{np.asarray(post,dtype=int)}"
+                    )
                     neigbour_b_choices = post
                     self.grid_man.choice_booleans.set(*n, post)
 
@@ -294,7 +296,7 @@ class WFC:
 
     def get_prop_status(self, coord: Coord):
         return [
-            self.adj_matrix.atom_mapping[id]
+            (id, self.adj_matrix.atom_mapping[id])
             for id in self.grid_man.choice_ids.get(*coord)[
                 self.grid_man.choice_booleans.get(*coord)
             ]

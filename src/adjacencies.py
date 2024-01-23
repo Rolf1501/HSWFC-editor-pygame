@@ -92,8 +92,8 @@ class AdjacencyMatrix:
 
         self.inner_atom_adjacency()
 
-        # self.atom_atom_adjacency()
         self.atom_atom_heightmap_adjacency()
+        self.print_adj()
 
     def inner_atom_adjacency(self):
         """
@@ -147,6 +147,43 @@ class AdjacencyMatrix:
         Finds the atom adjacencies based on the heightmaps.
         Slides that heightmap over this heightmap and find the minimal offset such that the surfaces represented by the heightmaps touch each other.
         """
+
+        def calc_slider_range(max_d_slider, max_d_base, d):
+            """
+            Calculates the slider sliding window range, for a given shift d.
+            """
+            # Do not exceed the slider window's bounds.
+            # When the slider's coverage is smaller than the base window y, the base window should not exceed the y length of the slider.
+
+            # There are two main cases: (1) d <= max_d_slider and (2) d > max_d_slider.
+            # (1) indicates the case where the overlap of the two windows is a subset of the base.
+            # (2) indicates the moment when the base index >= sliding starting index.
+            # In case (1), max_d_slider - d is positive and corresponds to the first index where the sliding window moves over the base window.
+            # In case (2), the former would be negative, which outside the bounds. Hence, cap it off at 0.
+            start_d = max(0, max_d_slider - d)
+
+            # Same cases as before. In case (1), the last index of the slider still overlaps with an index of the base. Hence, the cap.
+            # In case (2), the length of the slider window should not exceed the length of the base.
+            # +1 is to compensate for numpy range handling.
+            end_d = min(max_d_slider, max_d_slider + max_d_base - d) + 1
+            return start_d, end_d
+
+        def calc_base_range(max_d_base, start_d_slider, end_d_slider, d):
+            """
+            Calculates the base sliding window range, for a given shift d.
+            Slider window range is used to infer base window range, since the two should not differ in length.
+            """
+            # Stays 0 until y is larger than the slider, at which point the base start should start to increase as well.
+            start_d_base = max(d - end_d_slider, 0)
+
+            # Do not exceed the slider window's bounds.
+            # When the slider's coverage is smaller than the base window y, the base window should not exceed the y length of the slider.
+            # Note that the second argument does not contain +1, since this is already incorporated in the end slider range.
+            end_d_base = min(
+                max_d_base + 1, start_d_base + end_d_slider - start_d_slider
+            )
+            return start_d_base, end_d_base
+
         this_terminal = self.terminals[this_id]
         that_terminal = self.terminals[that_id]
         this_heightmap = this_terminal.heightmaps[offset]
@@ -205,40 +242,58 @@ class AdjacencyMatrix:
         max_y_index_base = max_y_base - 1
 
         for y in range(n_shifts_y):
-            start_y_slider = max(0, max_y_index_slider - y)  # Offset by y.
+            # start_y_slider = max(0, max_y_index_slider - y)  # Offset by y.
 
-            # Do not exceed the slider window's bounds.
-            # The window may not exceed the y length of the base window.
-            end_y_slider = (
-                min(max_y_index_slider, start_y_slider + max_y_index_base) + 1
+            # # Do not exceed the slider window's bounds.
+            # # The window may not exceed the y length of the base window.
+            # end_y_slider = (
+            #     min(max_y_index_slider, max_y_index_base + max_y_index_slider - y)
+            #     + 1
+            #     # min(max_y_index_slider, start_y_slider + max_y_index_base) + 1
+            # )
+            start_y_slider, end_y_slider = calc_slider_range(
+                max_y_index_slider, max_y_index_base, y
             )
 
             # Stays 0 until y is larger than the slider, at which point the base start should start to increase as well.
-            start_y_base = max(y - end_y_slider, 0)
+            # start_y_base = max(y - end_y_slider, 0)
 
-            # Do not exceed the slider window's bounds.
-            # When the slider's coverage is smaller than the base window y, the base window should not exceed the y length of the slider.
-            end_y_base = (
-                min(max_y_base - 1, start_y_base + end_y_slider - start_y_slider) + 1
+            # end_y_base = (
+            #     min(max_y_index_base, start_y_base + end_y_slider - start_y_slider)
+            #     + 1
+            #     # min(max_y_base - 1, start_y_base + end_y_slider - start_y_slider) + 1
+            # )
+            start_y_base, end_y_base = calc_base_range(
+                max_y_index_base, start_y_slider, end_y_slider, y
             )
             for x in range(n_shifts_x):
-                start_x_slider = max(0, max_x_index_slider - x)  # Offset by x.
+                # start_x_slider = max(0, max_x_index_slider - x)  # Offset by x.
 
-                # Do not exceed the slider window's bounds.
-                # The window may not exceed the x length of the base window.
-                end_x_slider = (
-                    min(max_x_index_slider, start_x_slider + max_x_index_base) + 1
+                # # Do not exceed the slider window's bounds.
+                # # The window may not exceed the x length of the base window.
+                # end_x_slider = (
+                #     min(max_x_index_slider, start_x_slider + max_x_index_base) + 1
+                # )
+                start_x_slider, end_x_slider = calc_slider_range(
+                    max_x_index_slider, max_x_index_slider, x
                 )
 
-                # Stays 0 until x is larger than the slider, at which point the base start should start to increase as well.
-                start_x_base = max(x - end_x_slider + 1, 0)
-
-                # Do not exceed the slider window's bounds.
-                # When the slider's coverage is smaller than the base window x, the base window should not exceed the x length of the slider.
-                end_x_base = (
-                    min(max_x_base - 1, start_x_base + end_x_slider - start_x_slider)
-                    + 1
+                start_x_base, end_x_base = calc_base_range(
+                    max_x_index_base,
+                    start_x_slider,
+                    end_x_slider,
+                    x,
                 )
+
+                # # Stays 0 until x is larger than the slider, at which point the base start should start to increase as well.
+                # start_x_base = max(x - end_x_slider + 1, 0)
+
+                # # Do not exceed the slider window's bounds.
+                # # When the slider's coverage is smaller than the base window x, the base window should not exceed the x length of the slider.
+                # end_x_base = (
+                #     min(max_x_base - 1, start_x_base + end_x_slider - start_x_slider)
+                #     + 1
+                # )
 
                 base_window = base[start_y_base:end_y_base, start_x_base:end_x_base]
                 slider_window = slider[
@@ -258,9 +313,8 @@ class AdjacencyMatrix:
                 distance = base_window + slider_window
                 min_distance = np.min(distance)
 
-                sign = offset.to_numpy_array(True)[
-                    offset_direction_index
-                ]  # Relative to the base.
+                # Relative to the base.
+                sign = offset.to_numpy_array(True)[offset_direction_index]
 
                 # In case of 0 distance, need to compare two slices.
                 # For each additional distance, need one more slice from each terminal.
@@ -323,7 +377,6 @@ class AdjacencyMatrix:
                 s_s_y = slider_slice_indices[0]
                 s_s_x = slider_slice_indices[1]
                 s_s_z = slider_slice_indices[2]
-                # Loop over atoms in base.
 
                 insert_value = (
                     slider_dims[offset_direction_index]
@@ -341,7 +394,7 @@ class AdjacencyMatrix:
                     -sign * (min_distance - insert_value),
                 )
 
-                print(f"BSCOORD: {base_to_slider_coord}")
+                print(f"\nBSCOORD: {base_to_slider_coord}")
                 print(sign, min_distance, slider_dims, offset_direction_index)
                 print(f"Shifts: x: {x} y: {y}")
                 print(f"bsx: {b_s_x} bsy: {b_s_y}: bsz: {b_s_z}")
@@ -350,13 +403,18 @@ class AdjacencyMatrix:
                 print(f"base_dims: {base_dims}")
                 print(f"slider_dims: {slider_dims}")
                 print(f"bw: {base_window} sw: {slider_window}")
-                for i_y in range(b_s_y[1] - b_s_y[0]):
-                    for i_x in range(b_s_x[1] - b_s_x[0]):
-                        for i_z in range(b_s_z[1] - b_s_z[0]):
+
+                for i_y in range(base_dims[0]):
+                    for i_x in range(base_dims[1]):
+                        for i_z in range(base_dims[2]):
+                            # for i_y in range(b_s_y[1] - b_s_y[0]):
+                            #     for i_x in range(b_s_x[1] - b_s_x[0]):
+                            #         for i_z in range(b_s_z[1] - b_s_z[0]):
                             # Select a coord in base.
-                            b_c_coord = i_y + b_s_y[0], i_x + b_s_x[0], i_z + b_s_z[0]
+                            b_c_coord = i_y, i_x, i_z
+                            # b_c_coord = i_y + b_s_y[0], i_x + b_s_x[0], i_z + b_s_z[0]
                             b_c = base_atoms[b_c_coord[0], b_c_coord[1], b_c_coord[2]]
-                            print(f"bccoord: {b_c_coord}")
+                            # print(f"bccoord: {b_c_coord}")
                             # And check if an atom is present.
                             if b_c is not None:
                                 # If so: loop over the possible neighbours in the slider.
@@ -368,7 +426,6 @@ class AdjacencyMatrix:
                                         o.x,
                                         o.z,
                                     ]
-                                    # print(f"Rel offset {rel_offset}")
                                     s_coord = np.array(
                                         rel_offset - base_to_slider_coord, dtype=int
                                     )
@@ -377,7 +434,9 @@ class AdjacencyMatrix:
                                     if np.any(s_coord < 0) or np.any(
                                         s_coord >= slider_dims
                                     ):
-                                        # print(f"\ts_coord out of bound... {s_coord}")
+                                        # print(
+                                        #     f"Coord out of bounds... {s_coord} {o} {b_c}"
+                                        # )
                                         continue
 
                                     s_c = slider_atoms[
@@ -391,18 +450,18 @@ class AdjacencyMatrix:
                                         slider_atom_index = self.get_atom_index(
                                             slider_id, s_c
                                         )
-                                        self.update_atom_adjacency(
+                                        if self.update_atom_adjacency(
                                             base_atom_index,
                                             slider_atom_index,
                                             o,
                                             weight,
-                                        )
-                                        print(
-                                            f"""FOUND IT! b_c: {b_c} s_c: {s_c} o: {o}, 
-                                            glob_offset: {offset}; shift: {y,x};
-                                            min_dist: {min_distance}; s_coord: {s_coord}
-                                            rel_offset: {rel_offset}"""
-                                        )
+                                        ):
+                                            print(
+                                                f"""FOUND IT! b_c: {base_id}, {b_c} s_c: {slider_id}, {s_c} o: {o},
+                                                glob_offset: {offset}; shift: {y,x};
+                                                min_dist: {min_distance}; s_coord: {s_coord}
+                                                rel_offset: {rel_offset}"""
+                                            )
                             else:
                                 print(f"Passing bc: {b_c}")
 
@@ -501,8 +560,10 @@ class AdjacencyMatrix:
             ] = weight
 
             print(
-                f"Added adjacency: {this_index} ({self.atom_mapping[this_index]}), {that_index} ({self.atom_mapping[that_index]}), {offset}, {weight}"
+                f"Added adjacency:\n\t{this_index} ({self.atom_mapping[this_index]}), {that_index} ({self.atom_mapping[that_index]}), {offset}, w: {weight}"
             )
+            return True
+        return False
 
     def get_relative_atom_coord(self, n_dims, *tuples):
         """
@@ -542,10 +603,12 @@ class AdjacencyMatrix:
         return self.atom_adjacency_matrix_w[offset][choice_id]
 
     def print_adj(self):
-        for o, a in self.ADJ.items():
+        print(self.atom_mapping)
+        print(self.part_atom_range_mapping)
+        for o, a in self.atom_adjacency_matrix.items():
             print(o)
             for i in a:
-                print(i)
+                print(np.asarray(i, dtype=int))
 
     def get_full(self, value):
         return np.full((self.get_n_atoms()), value)
