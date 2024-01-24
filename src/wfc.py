@@ -10,6 +10,7 @@ import numpy as np
 from queue import PriorityQueue
 from communicator import Communicator
 from collections import namedtuple
+import time
 
 comm = Communicator()
 
@@ -143,21 +144,21 @@ class WFC:
                 comm.communicate(f"Affected cell coord: {affected_cell_coord}")
                 if self.grid_man.grid.within_bounds(*affected_cell_coord):
                     # Compare the mask of the terminal to the currently available choices and ensure that the terminal atom is allowed.
-                    relative_mask = terminal.atom_mask[
-                        atom_index.y, atom_index.x, atom_index.z
-                    ]
-                    choices = self.grid_man.choice_booleans.get(*affected_cell_coord)
+                    # relative_mask = terminal.atom_mask[
+                    #     atom_index.y, atom_index.x, atom_index.z
+                    # ]
+                    # choices = self.grid_man.choice_booleans.get(*affected_cell_coord)
 
-                    # Select the choices of the current cell that correspond to those of the chosen terminal.
-                    (range_start, range_end) = self.get_terminal_range(t_id)
-                    sub_choices = choices[range_start:range_end]
+                    # # Select the choices of the current cell that correspond to those of the chosen terminal.
+                    # (range_start, range_end) = self.get_terminal_range(t_id)
+                    # sub_choices = choices[range_start:range_end]
 
                     # Intersection of allowed choices.
-                    comparison = relative_mask & sub_choices
+                    # comparison = relative_mask & sub_choices
 
                     # Catch cases where the intersection yielded no True values.
                     # TODO This should signal backtracking or exception handling, since the current configuration is unsolvable.
-                    assert len(comparison.nonzero()[0]) > 0
+                    # assert len(comparison.nonzero()[0]) > 0
 
                     atom_id = self.adj_matrix.atom_mapping.inverse[(t_id, atom_index)]
                     affected_cells.append((affected_cell_coord, atom_id))
@@ -192,16 +193,19 @@ class WFC:
         weights = choice_weights * choice_booleans_int_mask
 
         # Normalize weights
-        weights *= 1.0 / (np.sum(weights))
-        comm.communicate(f"Weights: {weights}")
+        try:
+            weights *= 1.0 / (np.sum(weights))
+            comm.communicate(f"Weights: {weights}")
 
-        # Make a weighted decision given the set of choices that fit.
-        choice = np.random.choice(choice_ids, p=weights)
+            # Make a weighted decision given the set of choices that fit.
+            choice = np.random.choice(choice_ids, p=weights)
 
-        comm.communicate(
-            f"Chosen: {choice} {self.adj_matrix.atom_mapping[choice]} at {x,y,z}"
-        )
-
+            comm.communicate(
+                f"Chosen: {choice} {self.adj_matrix.atom_mapping[choice]} at {x,y,z}"
+            )
+        except:
+            print(f"No More choices for {x,y,z}")
+            time.sleep(10)
         return choice
 
     def get_extent_range(self, extent: Coord):

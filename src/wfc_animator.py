@@ -57,7 +57,7 @@ class WFCAnimator(Animator):
         self.collision_traverser = CollisionTraverser()
         self.collision_handler_queue = CollisionHandlerQueue()
 
-        self.init_info_grid()
+        # self.init_info_grid()
         self.init_key_events()
         self.init_mouse_events()
         self.init_tasks()
@@ -348,12 +348,14 @@ comm.silence()
 # terminals, adjs, def_w = Toy().example_meta_tiles_zebra_horizontal()
 # terminals, adjs, def_w = Toy().example_two_tiles()
 # terminals, adjs, def_w = Toy().example_two_tiles_3D()
-terminals, adjs, def_w = Toy().example_two_tiles2()
+terminals, adjs, def_w = Toy().example_three_tiles_3d_fallback()
+
+# terminals, adjs, def_w = Toy().example_two_tiles2()
 
 # grid_extent = Coord(50, 1, 50)
-grid_extent = Coord(5, 1, 5)
+# grid_extent = Coord(5, 1, 5)
 # grid_extent = Coord(5, 5, 5)
-# grid_extent = Coord(15, 15, 15)
+grid_extent = Coord(16, 16, 16)
 start_coord = grid_extent * Coord(0.5, 0, 0.5)
 start_coord = Coord(int(start_coord.x), int(start_coord.y), int(start_coord.z))
 

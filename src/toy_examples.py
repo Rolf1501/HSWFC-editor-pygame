@@ -502,43 +502,149 @@ class ToyExamples:
         return terminals, adjacencies, None
 
     def example_two_tiles_3D(symmetry_axes=full_symmetric_axes()):
-        x, y, z = 2, 2, 2
-        mask0 = np.full((y, x, z), True)
+        x0, y0, z0 = 2, 2, 2
+        mask0 = np.full((y0, x0, z0), True)
         mask0[0, 0, 0] = False  # Create a small L shape
         mask0[0, 1, 0] = False  # Create a small L shape
+        x1, y1, z1 = 1, 1, 1
+        mask1 = np.full((y1, x1, z1), True)
 
         terminals = {
             0: Terminal(
-                BB.from_whd(x, y, z),
+                BB.from_whd(x0, y0, z0),
                 symmetry_axes,
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask0,
             ),
             1: Terminal(
-                BB.from_whd(x, y, z), symmetry_axes, Colour(0.8, 0.3, 0, 1), mask=mask0
+                BB.from_whd(x1, y1, z1),
+                symmetry_axes,
+                Colour(0.8, 0.3, 0, 1),
+                mask=mask1,
             ),
         }
 
         adjacencies = {
+            # 1 - 1
             Adjacency(1, {R(0, 1)}, Offset(*C.NORTH.value), True),
             Adjacency(1, {R(0, 1)}, Offset(*C.EAST.value), True),
             Adjacency(1, {R(0, 1)}, Offset(*C.SOUTH.value), True),
             Adjacency(1, {R(0, 1)}, Offset(*C.WEST.value), True),
-            # Adjacency(0, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            # Adjacency(0, {R(1, 1)}, Offset(*C.EAST.value), True),
-            # Adjacency(0, {R(1, 1)}, Offset(*C.SOUTH.value), True),
-            # Adjacency(0, {R(1, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.BOTTOM.value), True),
+            Adjacency(0, {R(1, 1)}, Offset(*C.TOP.value), True),
+            Adjacency(0, {R(1, 1)}, Offset(*C.BOTTOM.value), True),
+            # 0 - 0
+            Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
             Adjacency(0, {R(0, 1)}, Offset(*C.TOP.value), True),
             Adjacency(0, {R(0, 1)}, Offset(*C.BOTTOM.value), True),
+            # 1 - 1
+            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.BOTTOM.value), True),
         }
 
         return terminals, adjacencies, None
+
+    def example_three_tiles_3d_fallback(symmetry_axes=full_symmetric_axes()):
+        x0, y0, z0 = 2, 2, 2
+        mask0 = np.full((y0, x0, z0), True)
+        mask0[0, 0, 0] = False  # Create a small L shape
+        mask0[0, 1, 0] = False  # Create a small L shape
+
+        x1, y1, z1 = 2,2,2
+        mask1 = np.full((y1, x1, z1), True)
+        mask1[1, 0, 0] = False  # Create a small L shape
+        mask1[1, 1, 0] = False  # Create a small L shape
+
+        x2, y2, z2 = 1, 1, 1
+        mask2 = np.full((x2, y2, z2), True)
+
+        terminals = {
+            0: Terminal(
+                BB.from_whd(x0, y0, z0),
+                symmetry_axes,
+                Colour(0.3, 0.6, 0.6, 1),
+                mask=mask0,
+            ),
+            1: Terminal(
+                BB.from_whd(x1, y1, z1),
+                symmetry_axes,
+                Colour(0.8, 0.3, 0, 1),
+                mask=mask1,
+            ),
+            2: Terminal(
+                BB.from_whd(x2, y2, z2), symmetry_axes, Colour(1, 1, 1, 0.5), mask=mask2
+            ),
+        }
+
+        fallback_weight = 0.000001
+        adjacencies = {
+            # 1 - 1
+            Adjacency(1, {R(0, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(1, {R(0, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(1, {R(0, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(1, {R(0, 1)}, Offset(*C.WEST.value), True),
+            Adjacency(0, {R(1, 1)}, Offset(*C.TOP.value), True),
+            Adjacency(0, {R(1, 1)}, Offset(*C.BOTTOM.value), True),
+            # 0 - 0
+            Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.TOP.value), True),
+            Adjacency(0, {R(0, 1)}, Offset(*C.BOTTOM.value), True),
+            # 1 - 1
+            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
+            Adjacency(1, {R(1, 1)}, Offset(*C.BOTTOM.value), True),
+            # 2 - All
+            Adjacency(
+                2,
+                {R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)},
+                Offset(*C.NORTH.value),
+                True,
+            ),
+            Adjacency(
+                2,
+                {R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)},
+                Offset(*C.EAST.value),
+                True,
+            ),
+            Adjacency(
+                2,
+                {R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)},
+                Offset(*C.SOUTH.value),
+                True,
+            ),
+            Adjacency(
+                2,
+                {R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)},
+                Offset(*C.WEST.value),
+                True,
+            ),
+            Adjacency(
+                2,
+                {R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)},
+                Offset(*C.TOP.value),
+                True,
+            ),
+            Adjacency(
+                2,
+                {R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)},
+                Offset(*C.BOTTOM.value),
+                True,
+            ),
+        }
+
+        return (
+            terminals,
+            adjacencies,
+            {0: 1, 1: 1, 2: fallback_weight},
+        )
 
     def example_two_tiles2(symmetry_axes=full_symmetric_axes()):
         x, y, z = 2, 1, 2
