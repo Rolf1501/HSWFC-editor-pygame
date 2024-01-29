@@ -106,14 +106,14 @@ class WFC:
             # Keep cycling through the queue until an unchosen cell is found.
             while self.grid_man.grid.is_chosen(*coll.coord):
                 coll = self.collapse_queue.get()
-            origin_coord, t_id, affected_cells = self.collapse(coll)
+            origin_coord, t_id, t_o, affected_cells = self.collapse(coll)
 
             for c in affected_cells:
                 coord, id = c
                 self.prop_queue.put(Propagation([id], coord))
             self.propagate()
-            return origin_coord, t_id, affected_cells
-        return None, None, None
+            return origin_coord, t_id, t_o, affected_cells
+        return None, None, None, None
 
     def collapse_automatic(self):
         while not self.is_done():
@@ -131,7 +131,7 @@ class WFC:
             choice_id = self.choose(x, y, z)
 
             # Get terminal and relative coord
-            t_id, t_coord = self.adj_matrix.atom_mapping[choice_id]
+            t_id, t_coord, t_o = self.adj_matrix.atom_mapping[choice_id]
             terminal = self.terminals[t_id]
             # Find originating cell to host part.
             coord = Coord(x, y, z)
@@ -139,7 +139,7 @@ class WFC:
 
             # Update the affected cells.
             affected_cells = []
-            for atom_index in terminal.atom_indices:
+            for atom_index in terminal.oriented_indices[t_o]:
                 affected_cell_coord = origin_coord + atom_index
                 comm.communicate(f"Affected cell coord: {affected_cell_coord}")
                 if self.grid_man.grid.within_bounds(*affected_cell_coord):
@@ -160,15 +160,17 @@ class WFC:
                     # TODO This should signal backtracking or exception handling, since the current configuration is unsolvable.
                     # assert len(comparison.nonzero()[0]) > 0
 
-                    atom_id = self.adj_matrix.atom_mapping.inverse[(t_id, atom_index)]
+                    atom_id = self.adj_matrix.atom_mapping.inverse[
+                        (t_id, atom_index, t_o)
+                    ]
                     affected_cells.append((affected_cell_coord, atom_id))
 
                     # Make sure the results take effect.
                     self.set_occupied(*affected_cell_coord, atom_id)
 
             comm.communicate(f"Covered: {affected_cells}")
-            return origin_coord, t_id, affected_cells
-        return None, None, None
+            return origin_coord, t_id, t_o, affected_cells
+        return None, None, None, None
 
     def set_occupied(self, x, y, z, id):
         self.grid_man.grid.set(x, y, z, id)

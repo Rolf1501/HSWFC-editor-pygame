@@ -310,21 +310,21 @@ class WFCAnimator(Animator):
 
     def wfc_collapse_once(self, task):
         if self.collapse_once:
-            origin_coord, terminal_id, _ = self.wfc.collapse_once()
+            origin_coord, terminal_id, t_o, _ = self.wfc.collapse_once()
 
             comm.communicate(f"Placed: {terminal_id} at {origin_coord}")
-            self.inform_animator_choice(terminal_id, origin_coord)
+            self.inform_animator_choice(terminal_id, origin_coord, t_o)
 
             self.collapse_once = False
         return task.cont
 
-    def inform_animator_choice(self, choice, coord):
+    def inform_animator_choice(self, choice, coord, orientation):
         terminal = self.wfc.terminals[choice]
         comm.communicate(f"Model {choice} added at {coord}")
         if terminal.colour:
             colour_v = self.colour_variation(terminal.colour)
-            self.pending_models += len(terminal.atom_indices)
-            for atom_index in terminal.atom_indices:
+            self.pending_models += len(terminal.oriented_indices[orientation])
+            for atom_index in terminal.oriented_indices[orientation]:
                 model_path = terminal.atom_index_to_id_mapping[atom_index].path
                 self.add_model(coord + atom_index, path=model_path, colour=colour_v)
 
@@ -348,7 +348,8 @@ comm.silence()
 # terminals, adjs, def_w = Toy().example_meta_tiles_zebra_horizontal()
 # terminals, adjs, def_w = Toy().example_two_tiles()
 # terminals, adjs, def_w = Toy().example_two_tiles_3D()
-terminals, adjs, def_w = Toy().example_three_tiles_3d_fallback()
+# terminals, adjs, def_w = Toy.example_three_tiles_3d_fallback()
+terminals, adjs, def_w = Toy.example_rotated_2d()
 
 # terminals, adjs, def_w = Toy().example_two_tiles2()
 
