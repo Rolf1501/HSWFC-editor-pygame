@@ -6,14 +6,16 @@ from collections import namedtuple
 from properties import Properties
 from terminal import Terminal
 from coord import Coord
+from communicator import Communicator
+
+comm = Communicator()
 
 
-@dataclass
-class Relation(namedtuple("Relation", ["other", "weight", "rotations"])):
-    other: int = field()
-
-    def __init_subclass__(cls) -> None:
-        return super().__init_subclass__()
+class Relation:
+    def __init__(self, other: int, weight: float, rotations: list[int] = [0]) -> None:
+        self.other = other
+        self.weight = weight
+        self.rotations = rotations
 
 
 class Adjacency:
@@ -38,6 +40,35 @@ class AdjacencyAny(Adjacency):
     ) -> None:
         super().__init__(source, {}, offset, symmetric)
         self.weight = weight
+
+
+@dataclass
+class HeightmapAdjacencyData:
+    terminal: Terminal
+    terminal_id: int
+    offset: Offset
+    rotations: list[int]
+    offset_direction_index: int
+    volume: int = field(default=None)
+    heightmaps: np.ndarray = field(init=False)
+
+    def __post_init__(self):
+        self.heightmaps = self.terminal.oriented_heightmaps[self.offset]
+
+    def mask_shape(self, orientation):
+        return self.terminal.oriented_mask[orientation].shape
+
+    def get_volume(self):
+        if self.volume is None:
+            # Volume is orientation independent
+            self.volume = np.prod([i for i in self.mask_shape(0)])
+        return self.volume
+
+    def hm_shape(self, orientation):
+        return self.heightmaps[orientation].shape
+
+    def get_max_depth(self, orientation):
+        return self.mask_shape(orientation)[self.offset_direction_index]
 
 
 @dataclass
@@ -81,19 +112,16 @@ class AdjacencyMatrix:
     def get_n_atoms(self):
         return len(self.atom_mapping.keys())
 
-    def calc_atom_range(self, n_atoms, terminal: Terminal):
-        return n_atoms + len(terminal.distinct_orientations) * terminal.n_atoms
-
-    def calc_atom_index(self, terminal_id, orientation):
-        pass
+    def calc_atom_range(self, terminal: Terminal):
+        return terminal.n_atoms
 
     def atom_adjacencies(self):
         n_atoms = 0
 
         for p in self.parts:
             t = self.terminals[p]
-            t_atoms = self.calc_atom_range(n_atoms, t)
-            self.part_atom_range_mapping[p] = (n_atoms, t_atoms)
+            t_atoms = self.calc_atom_range(t)
+            self.part_atom_range_mapping[p] = (n_atoms, n_atoms + t_atoms)
             n_atoms += t_atoms
 
         for o in self.offsets:
@@ -107,6 +135,9 @@ class AdjacencyMatrix:
 
     def get_atom_id(self, part_id, atom_index, orientation):
         return self.atom_mapping.inverse[(part_id, atom_index, orientation)]
+
+    def get_orientation_from_atom_id(self, atom_id):
+        return self.atom_mapping[atom_id][2]
 
     def inner_atom_adjacency(self):
         """
@@ -146,6 +177,7 @@ class AdjacencyMatrix:
                         ] = 1.0
 
     def atom_atom_heightmap_adjacency(self):
+        print(self.atom_mapping)
         for a in self.part_adjacencies:
             for allowed_neighbour in a.allowed_neighbours:
                 self.min_distance_diffs_from_heightmaps(
@@ -163,7 +195,6 @@ class AdjacencyMatrix:
         that_id: int,
         offset: Offset,
         weight: float,
-        this_rotations: list[int],
         that_rotations: list[int],
     ):
         """
@@ -207,243 +238,259 @@ class AdjacencyMatrix:
             )
             return start_d_base, end_d_base
 
-        this_terminal = self.terminals[this_id]
-        that_terminal = self.terminals[that_id]
-        this_heightmap = this_terminal.heightmaps[offset]
-        that_heightmap = that_terminal.heightmaps[offset.complement()]
+        def calc_shifts(this_shape, that_shape):
+            return tuple([i + j - 1 for i, j in zip(this_shape, that_shape)])
+
         offset_direction_index = np.nonzero([offset.y, offset.x, offset.z])[0][0]
-        this_max_depth = this_terminal.mask.shape[offset_direction_index]
-        that_max_depth = that_terminal.mask.shape[offset_direction_index]
-        (this_y, this_x) = this_heightmap.shape
-        (that_y, that_x) = that_heightmap.shape
+
+        this_hm_adj = HeightmapAdjacencyData(
+            self.terminals[this_id],
+            this_id,
+            offset,
+            self.terminals[this_id].distinct_orientations,
+            offset_direction_index,
+        )
+
+        that_hm_adj = HeightmapAdjacencyData(
+            self.terminals[that_id],
+            that_id,
+            offset.complement(),
+            that_rotations,
+            offset_direction_index,
+        )
 
         # By selecting the smaller heightmap as the base, the number of checks for touching surfaces is reduced.
-        if this_x * this_y <= that_x * that_y:
-            base_terminal = this_terminal
-            slider_terminal = that_terminal
-            base = this_heightmap
-            slider = that_heightmap
-            base_depth = this_max_depth
-            slider_depth = that_max_depth
-            max_x_base = this_x
-            max_y_base = this_y
-            max_x_slider = that_x
-            max_y_slider = that_y
-            base_id = this_id
-            slider_id = that_id
-            print(offset)
-            print(f"base_id: {base_id}; slider_id: {slider_id}")
-            print(f"base hm: {base}")
-            print(f"slider hm: {slider}")
-            print(base_terminal.mask)
-            print(slider_terminal.mask)
+        if this_hm_adj.get_volume() <= that_hm_adj.get_volume():
+            base = this_hm_adj
+            slider = that_hm_adj
         else:
-            base_terminal = that_terminal
-            slider_terminal = this_terminal
+            base = that_hm_adj
+            slider = this_hm_adj
             # Switch the offset, since the base and slider are swapped compared to the input.
             offset = offset.complement()
-            base = that_heightmap
-            slider = this_heightmap
-            base_depth = that_max_depth
-            slider_depth = this_max_depth
-            max_x_base = that_x
-            max_y_base = that_y
-            max_x_slider = this_x
-            max_y_slider = this_y
-            base_id = that_id
-            slider_id = this_id
 
-        base_dims = base_terminal.mask.shape
-        slider_dims = slider_terminal.mask.shape
+        for base_r in base.rotations:
+            bo = base.terminal.get_rotation_orientation(base_r)
+            base_dims = base.terminal.oriented_mask[bo].shape
+            base_hm = base.heightmaps[bo]
 
-        n_shifts_x = this_x + that_x - 1
-        n_shifts_y = this_y + that_y - 1
+            by, bx = base_hm.shape
+            max_y_index_base, max_x_index_base = by - 1, bx - 1
 
-        max_x_index_slider = max_x_slider - 1
-        max_x_index_base = max_x_base - 1
-        max_y_index_slider = max_y_slider - 1
-        max_y_index_base = max_y_base - 1
+            for slider_r in slider.rotations:
+                so = slider.terminal.get_rotation_orientation(slider_r)
+                slider_dims = slider.terminal.oriented_mask[so].shape
+                slider_hm = slider.heightmaps[so]
 
-        for y in range(n_shifts_y):
-            start_y_slider, end_y_slider = calc_slider_range(
-                max_y_index_slider, max_y_index_base, y
-            )
+                # base_dims = base_terminal.mask.shape
+                # slider_dims = slider_terminal.mask.shape
+                sy, sx = slider_hm.shape
+                max_y_index_slider, max_x_index_slider = sy - 1, sx - 1
 
-            start_y_base, end_y_base = calc_base_range(
-                max_y_index_base, start_y_slider, end_y_slider, y
-            )
-            for x in range(n_shifts_x):
-                start_x_slider, end_x_slider = calc_slider_range(
-                    max_x_index_slider, max_x_index_slider, x
-                )
+                n_shifts_y, n_shifts_x = calc_shifts(base_hm.shape, slider_hm.shape)
 
-                start_x_base, end_x_base = calc_base_range(
-                    max_x_index_base,
-                    start_x_slider,
-                    end_x_slider,
-                    x,
-                )
-
-                base_window = base[start_y_base:end_y_base, start_x_base:end_x_base]
-                slider_window = slider[
-                    start_y_slider:end_y_slider, start_x_slider:end_x_slider
-                ]
-
-                # TODO: infer range of empty space from heightmaps in other directions.
-
-                # If either window is empty, indicated by max distance to occupied cell, then there is no surface for contact.
-                if np.all(base_window >= base_depth) or np.all(
-                    slider_window >= slider_depth
-                ):
-                    print(f"\nCONTINUING: bw {base_window} sw {slider_window}\n")
-                    continue
-
-                # Otherwise, take the minimal distance between potential contact points by overlapping the windows.
-                distance = base_window + slider_window
-                min_distance = np.min(distance)
-
-                # Relative to the base.
-                sign = offset.to_numpy_array(True)[offset_direction_index]
-
-                # In case of 0 distance, need to compare two slices.
-                # For each additional distance, need one more slice from each terminal.
-                base_slice_indices = np.array(
-                    [(start_y_base, end_y_base), (start_x_base, end_x_base)]
-                )
-
-                slider_slice_indices = np.array(
-                    [(start_y_slider, end_y_slider), (start_x_slider, end_x_slider)]
-                )
-
-                if sign < 0:
-                    # Insert the depth specification in the direction corresponding to the offset.
-                    base_slice_indices = np.insert(
-                        base_slice_indices,
-                        offset_direction_index,
-                        (0, 1 + min_distance),
-                        axis=0,
+                for y in range(n_shifts_y):
+                    start_y_slider, end_y_slider = calc_slider_range(
+                        max_y_index_slider, max_y_index_base, y
                     )
 
-                    slider_slice_indices = np.insert(
-                        slider_slice_indices,
-                        offset_direction_index,
-                        (
-                            slider_dims[offset_direction_index] - min_distance - 1,
-                            slider_dims[offset_direction_index],
-                        ),
-                        axis=0,
+                    start_y_base, end_y_base = calc_base_range(
+                        max_y_index_base, start_y_slider, end_y_slider, y
                     )
-                else:
-                    # Insert the depth specification in the direction corresponding to the offset.
-                    base_slice_indices = np.insert(
-                        base_slice_indices,
-                        offset_direction_index,
-                        (
-                            base_dims[offset_direction_index] - min_distance - 1,
-                            base_dims[offset_direction_index],
-                        ),
-                        axis=0,
-                    )
+                    for x in range(n_shifts_x):
+                        start_x_slider, end_x_slider = calc_slider_range(
+                            max_x_index_slider, max_x_index_base, x
+                        )
 
-                    slider_slice_indices = np.insert(
-                        slider_slice_indices,
-                        offset_direction_index,
-                        (0, 1 + min_distance),
-                        axis=0,
-                    )
+                        start_x_base, end_x_base = calc_base_range(
+                            max_x_index_base,
+                            start_x_slider,
+                            end_x_slider,
+                            x,
+                        )
 
-                # Slice values correspond to one another. i.e. base slice index 0,0 corresponds to slider slice index 0,0
-
-                # The meeting slices are distance d apart. So, slice 0 meets slice -d: (-1 - sign) * (-d), and -1 meets d: sign * (-1 + d). Depends on sign!
-                # 1 meets -1: (1 - d); -1 meets 1
-                # this means that the meeting slices are aligned when one of them is flipped in the offset direction.
-                b_s_y = base_slice_indices[0]
-                b_s_x = base_slice_indices[1]
-                b_s_z = base_slice_indices[2]
-                s_s_y = slider_slice_indices[0]
-                s_s_x = slider_slice_indices[1]
-                s_s_z = slider_slice_indices[2]
-
-                insert_value = (
-                    slider_dims[offset_direction_index]
-                    if sign < 0
-                    else base_dims[offset_direction_index]
-                )
-                base_to_slider_coord = np.insert(
-                    np.array(
-                        [
-                            start_y_base - start_y_slider,
-                            start_x_base - start_x_slider,
+                        base_window = base_hm[
+                            start_y_base:end_y_base, start_x_base:end_x_base
                         ]
-                    ),
-                    offset_direction_index,
-                    -sign * (min_distance - insert_value),
-                )
+                        slider_window = slider_hm[
+                            start_y_slider:end_y_slider, start_x_slider:end_x_slider
+                        ]
 
-                print(f"\nBSCOORD: {base_to_slider_coord}")
-                print(sign, min_distance, slider_dims, offset_direction_index)
-                print(f"Shifts: x: {x} y: {y}")
-                print(f"bsx: {b_s_x} bsy: {b_s_y}: bsz: {b_s_z}")
-                print(f"ssx: {s_s_x} ssy: {s_s_y} ssz: {s_s_z}")
-                print(f"glob offset {offset}")
-                print(f"base_dims: {base_dims}")
-                print(f"slider_dims: {slider_dims}")
-                print(f"bw: {base_window} sw: {slider_window}")
+                        # TODO: infer range of empty space from heightmaps in other directions.
 
-                for i_y in range(base_dims[0]):
-                    for i_x in range(base_dims[1]):
-                        for i_z in range(base_dims[2]):
-                            # Select a coord in base.
-                            b_c_coord = i_y, i_x, i_z
-                            b_c = Coord(b_c_coord[1], b_c_coord[0], b_c_coord[2])
+                        # If either window is empty, indicated by max distance to occupied cell, then there is no surface for contact.
+                        if np.all(base_window >= base.get_max_depth(bo)) or np.all(
+                            slider_window >= slider.get_max_depth(so)
+                        ):
+                            print(
+                                f"\nCONTINUING: bw {base_window} sw {slider_window}\n"
+                                + f"b_hm: {base_hm} s_hm: {slider_hm} bo: {bo} so: {so} y: {y} x: {x}\n"
+                            )
+                            continue
 
-                            # And check if an atom is present.
-                            if b_c is not None:
-                                # If so: loop over the possible neighbours in the slider.
-                                for o in self.offsets:
-                                    # Base starting coord relative to the slider's position.
+                        # Otherwise, take the minimal distance between potential contact points by overlapping the windows.
+                        distance = base_window + slider_window
+                        min_distance = np.min(distance)
 
-                                    rel_offset = np.asarray(b_c_coord) + [
-                                        o.y,
-                                        o.x,
-                                        o.z,
-                                    ]
-                                    s_coord = np.array(
-                                        rel_offset - base_to_slider_coord, dtype=int
-                                    )
+                        # Relative to the base.
+                        sign = offset.to_numpy_array(True)[offset_direction_index]
 
-                                    # Only consider coords within bounds.
-                                    if np.any(s_coord < 0) or np.any(
-                                        s_coord >= slider_dims
-                                    ):
-                                        # print(
-                                        #     f"Coord out of bounds... {s_coord} {o} {b_c}"
-                                        # )
-                                        continue
+                        # In case of 0 distance, need to compare two slices.
+                        # For each additional distance, need one more slice from each terminal.
+                        base_slice_indices = np.array(
+                            [(start_y_base, end_y_base), (start_x_base, end_x_base)]
+                        )
 
-                                    s_c = Coord(s_coord[1], s_coord[0], s_coord[2])
+                        slider_slice_indices = np.array(
+                            [
+                                (start_y_slider, end_y_slider),
+                                (start_x_slider, end_x_slider),
+                            ]
+                        )
 
-                                    if s_c is not None:
-                                        base_atom_index = self.get_atom_index(
-                                            base_id, b_c
+                        # TODO: refactor this...
+                        if sign < 0:
+                            # Insert the depth specification in the direction corresponding to the offset.
+                            base_slice_indices = np.insert(
+                                base_slice_indices,
+                                offset_direction_index,
+                                (0, 1 + min_distance),
+                                axis=0,
+                            )
+
+                            slider_slice_indices = np.insert(
+                                slider_slice_indices,
+                                offset_direction_index,
+                                (
+                                    slider_dims[offset_direction_index]
+                                    - min_distance
+                                    - 1,
+                                    slider_dims[offset_direction_index],
+                                ),
+                                axis=0,
+                            )
+                        else:
+                            # Insert the depth specification in the direction corresponding to the offset.
+                            base_slice_indices = np.insert(
+                                base_slice_indices,
+                                offset_direction_index,
+                                (
+                                    base_dims[offset_direction_index]
+                                    - min_distance
+                                    - 1,
+                                    base_dims[offset_direction_index],
+                                ),
+                                axis=0,
+                            )
+
+                            slider_slice_indices = np.insert(
+                                slider_slice_indices,
+                                offset_direction_index,
+                                (0, 1 + min_distance),
+                                axis=0,
+                            )
+
+                        # Slice values correspond to one another. i.e. base slice index 0,0 corresponds to slider slice index 0,0
+
+                        # The meeting slices are distance d apart. So, slice 0 meets slice -d: (-1 - sign) * (-d), and -1 meets d: sign * (-1 + d). Depends on sign!
+                        # 1 meets -1: (1 - d); -1 meets 1
+                        # this means that the meeting slices are aligned when one of them is flipped in the offset direction.
+                        b_s_y = base_slice_indices[0]
+                        b_s_x = base_slice_indices[1]
+                        b_s_z = base_slice_indices[2]
+                        s_s_y = slider_slice_indices[0]
+                        s_s_x = slider_slice_indices[1]
+                        s_s_z = slider_slice_indices[2]
+
+                        insert_value = (
+                            slider_dims[offset_direction_index]
+                            if sign < 0
+                            else base_dims[offset_direction_index]
+                        )
+                        base_to_slider_coord = np.insert(
+                            np.array(
+                                [
+                                    start_y_base - start_y_slider,
+                                    start_x_base - start_x_slider,
+                                ]
+                            ),
+                            offset_direction_index,
+                            -sign * (min_distance - insert_value),
+                        )
+
+                        comm.communicate(f"\nBSCOORD: {base_to_slider_coord}")
+                        comm.communicate(
+                            f"{sign, min_distance, slider_dims, offset_direction_index}"
+                        )
+                        comm.communicate(f"Shifts: x: {x} y: {y}")
+                        comm.communicate(f"bsx: {b_s_x} bsy: {b_s_y}: bsz: {b_s_z}")
+                        comm.communicate(f"ssx: {s_s_x} ssy: {s_s_y} ssz: {s_s_z}")
+                        comm.communicate(f"glob offset {offset}")
+                        comm.communicate(f"base_dims: {base_dims}")
+                        comm.communicate(f"slider_dims: {slider_dims}")
+                        comm.communicate(f"bw: {base_window} sw: {slider_window}")
+
+                        for i_y in range(base_dims[0]):
+                            for i_x in range(base_dims[1]):
+                                for i_z in range(base_dims[2]):
+                                    # Check if the atom is present.
+                                    if base.terminal.contains_atom(bo, i_x, i_y, i_z):
+                                        # Select a coord in base.
+                                        b_c_coord = i_y, i_x, i_z
+                                        b_c = Coord(
+                                            b_c_coord[1], b_c_coord[0], b_c_coord[2]
                                         )
-                                        slider_atom_index = self.get_atom_index(
-                                            slider_id, s_c
-                                        )
-                                        if self.update_atom_adjacency(
-                                            base_atom_index,
-                                            slider_atom_index,
-                                            o,
-                                            weight,
-                                        ):
-                                            print(
-                                                f"""FOUND IT! b_c: {base_id}, {b_c} s_c: {slider_id}, {s_c} o: {o},
-                                                glob_offset: {offset}; shift: {y,x};
-                                                min_dist: {min_distance}; s_coord: {s_coord}
-                                                rel_offset: {rel_offset}"""
+                                        # if b_c is not None:
+                                        # If so: loop over the possible neighbours in the slider.
+                                        for o in self.offsets:
+                                            # Base starting coord relative to the slider's position.
+
+                                            rel_offset = np.asarray(b_c_coord) + [
+                                                o.y,
+                                                o.x,
+                                                o.z,
+                                            ]
+                                            s_coord = np.array(
+                                                rel_offset - base_to_slider_coord,
+                                                dtype=int,
                                             )
-                            else:
-                                print(f"Passing bc: {b_c}")
+
+                                            # Only consider coords within bounds.
+                                            if np.any(s_coord < 0) or np.any(
+                                                s_coord >= slider_dims
+                                            ):
+                                                # print(
+                                                #     f"Coord out of bounds... {s_coord} {o} {b_c}"
+                                                # )
+                                                continue
+
+                                            s_c = Coord(
+                                                s_coord[1], s_coord[0], s_coord[2]
+                                            )
+                                            if slider.terminal.contains_atom(
+                                                so, s_c.x, s_c.y, s_c.z
+                                            ):
+                                                # if s_c is not None:
+                                                base_atom_index = self.get_atom_index(
+                                                    base.terminal_id, b_c, bo
+                                                )
+                                                slider_atom_index = self.get_atom_index(
+                                                    slider.terminal_id, s_c, so
+                                                )
+                                                if self.update_atom_adjacency(
+                                                    base_atom_index,
+                                                    slider_atom_index,
+                                                    o,
+                                                    weight,
+                                                ):
+                                                    comm.communicate(
+                                                        f"""FOUND IT! b_c: {base.terminal_id}, {b_c} s_c: {slider.terminal_id}, {s_c} o: {o},
+                                                        glob_offset: {offset}; shift: {y,x};
+                                                        min_dist: {min_distance}; s_coord: {s_coord}
+                                                        rel_offset: {rel_offset}"""
+                                                    )
+                                    else:
+                                        comm.communicate(f"Passing bc: {b_c}")
 
     def sliding_range(self, index, max_this, max_that):
         """
@@ -519,8 +566,8 @@ class AdjacencyMatrix:
 
                     i = j  # Stop the looping when a pair has been found.
 
-    def get_atom_index(self, part_id, coord):
-        return self.atom_mapping.inverse[(part_id, coord)]
+    def get_atom_index(self, part_id, coord, orientation):
+        return self.atom_mapping.inverse[(part_id, coord, orientation)]
 
     def update_atom_adjacency(self, this_index, that_index, offset: Offset, weight):
         if (
@@ -539,7 +586,7 @@ class AdjacencyMatrix:
                 that_index, this_index
             ] = weight
 
-            print(
+            comm.communicate(
                 f"Added adjacency:\n\t{this_index} ({self.atom_mapping[this_index]}), {that_index} ({self.atom_mapping[that_index]}), {offset}, w: {weight}"
             )
             return True
