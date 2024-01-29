@@ -8,7 +8,10 @@ from terminal import Terminal
 from coord import Coord
 
 
-class Relation(namedtuple("Relation", ["other", "weight"])):
+@dataclass
+class Relation(namedtuple("Relation", ["other", "weight", "rotations"])):
+    other: int = field()
+
     def __init_subclass__(cls) -> None:
         return super().__init_subclass__()
 
@@ -78,13 +81,20 @@ class AdjacencyMatrix:
     def get_n_atoms(self):
         return len(self.atom_mapping.keys())
 
+    def calc_atom_range(self, n_atoms, terminal: Terminal):
+        return n_atoms + len(terminal.distinct_orientations) * terminal.n_atoms
+
+    def calc_atom_index(self, terminal_id, orientation):
+        pass
+
     def atom_adjacencies(self):
         n_atoms = 0
 
         for p in self.parts:
             t = self.terminals[p]
-            self.part_atom_range_mapping[p] = (n_atoms, n_atoms + t.n_atoms)
-            n_atoms += t.n_atoms
+            t_atoms = self.calc_atom_range(n_atoms, t)
+            self.part_atom_range_mapping[p] = (n_atoms, t_atoms)
+            n_atoms += t_atoms
 
         for o in self.offsets:
             self.atom_adjacency_matrix[o] = np.full((n_atoms, n_atoms), False)
@@ -95,6 +105,9 @@ class AdjacencyMatrix:
         self.atom_atom_heightmap_adjacency()
         self.print_adj()
 
+    def get_atom_id(self, part_id, atom_index, orientation):
+        return self.atom_mapping.inverse[(part_id, atom_index, orientation)]
+
     def inner_atom_adjacency(self):
         """
         Formalizes the atom atom adjacencies within a molecule.
@@ -102,32 +115,35 @@ class AdjacencyMatrix:
         for p in self.parts:
             t = self.terminals[p]
 
-            for i in t.atom_indices:
-                k = len(self.atom_mapping.keys())
-                self.atom_mapping[k] = (p, i)
-            # Make sure that the atoms of the same part have to be together.
-            # An adjacency constraint, only allowing the other neighbouring atom of the same part atom enforces this.
-            for i in t.atom_indices:
-                for o in self.offsets:
-                    this_index = self.atom_mapping.inverse[(p, i)]
+            # Go over all allowed orientations.
+            for d in t.distinct_orientations:
+                for i in t.oriented_indices[d]:
+                    k = len(self.atom_mapping.keys())
+                    self.atom_mapping[k] = (p, i, d)
 
-                    # Not all atoms have a neigbour of the same part in all offsets.
-                    # The try-except block catches invalid combinations.
-                    try:
-                        other_index = self.atom_mapping.inverse[(p, i + o)]
-                    except:
-                        continue
-                    self.atom_adjacency_matrix[o][this_index, other_index] = True
-                    # Mirror the operation
-                    self.atom_adjacency_matrix[o.scaled(-1)][
-                        other_index, this_index
-                    ] = True
+            for d in t.distinct_orientations:
+                # Make sure that the atoms of the same part have to be together.
+                # An adjacency constraint, only allowing the other neighbouring atom of the same part atom enforces this.
+                for i in t.oriented_indices[d]:
+                    this_index = self.atom_mapping.inverse[(p, i, d)]
+                    for o in self.offsets:
+                        # Not all atoms have a neigbour of the same part in all offsets.
+                        # The try-except block catches invalid combinations.
+                        try:
+                            other_index = self.atom_mapping.inverse[(p, i + o, d)]
+                        except:
+                            continue
+                        self.atom_adjacency_matrix[o][this_index, other_index] = True
+                        # Mirror the operation
+                        self.atom_adjacency_matrix[o.scaled(-1)][
+                            other_index, this_index
+                        ] = True
 
-                    self.atom_adjacency_matrix_w[o][this_index, other_index] = 1.0
-                    # Mirror the operation
-                    self.atom_adjacency_matrix_w[o.scaled(-1)][
-                        other_index, this_index
-                    ] = 1.0
+                        self.atom_adjacency_matrix_w[o][this_index, other_index] = 1.0
+                        # Mirror the operation
+                        self.atom_adjacency_matrix_w[o.scaled(-1)][
+                            other_index, this_index
+                        ] = 1.0
 
     def atom_atom_heightmap_adjacency(self):
         for a in self.part_adjacencies:
@@ -137,11 +153,18 @@ class AdjacencyMatrix:
                     allowed_neighbour.other,
                     a.offset,
                     allowed_neighbour.weight,
+                    allowed_neighbour.rotations,
                 )
         pass
 
     def min_distance_diffs_from_heightmaps(
-        self, this_id: int, that_id: int, offset: Offset, weight: float
+        self,
+        this_id: int,
+        that_id: int,
+        offset: Offset,
+        weight: float,
+        this_rotations: list[int],
+        that_rotations: list[int],
     ):
         """
         Finds the atom adjacencies based on the heightmaps.
@@ -334,8 +357,6 @@ class AdjacencyMatrix:
                 # The meeting slices are distance d apart. So, slice 0 meets slice -d: (-1 - sign) * (-d), and -1 meets d: sign * (-1 + d). Depends on sign!
                 # 1 meets -1: (1 - d); -1 meets 1
                 # this means that the meeting slices are aligned when one of them is flipped in the offset direction.
-                base_atoms = base_terminal.atom_coord_mask
-                slider_atoms = slider_terminal.atom_coord_mask
                 b_s_y = base_slice_indices[0]
                 b_s_x = base_slice_indices[1]
                 b_s_z = base_slice_indices[2]
@@ -372,14 +393,10 @@ class AdjacencyMatrix:
                 for i_y in range(base_dims[0]):
                     for i_x in range(base_dims[1]):
                         for i_z in range(base_dims[2]):
-                            # for i_y in range(b_s_y[1] - b_s_y[0]):
-                            #     for i_x in range(b_s_x[1] - b_s_x[0]):
-                            #         for i_z in range(b_s_z[1] - b_s_z[0]):
                             # Select a coord in base.
                             b_c_coord = i_y, i_x, i_z
-                            # b_c_coord = i_y + b_s_y[0], i_x + b_s_x[0], i_z + b_s_z[0]
-                            b_c = base_atoms[b_c_coord[0], b_c_coord[1], b_c_coord[2]]
-                            # print(f"bccoord: {b_c_coord}")
+                            b_c = Coord(b_c_coord[1], b_c_coord[0], b_c_coord[2])
+
                             # And check if an atom is present.
                             if b_c is not None:
                                 # If so: loop over the possible neighbours in the slider.
@@ -404,11 +421,9 @@ class AdjacencyMatrix:
                                         # )
                                         continue
 
-                                    s_c = slider_atoms[
-                                        s_coord[0], s_coord[1], s_coord[2]
-                                    ]
+                                    s_c = Coord(s_coord[1], s_coord[0], s_coord[2])
+
                                     if s_c is not None:
-                                        # Found adj!
                                         base_atom_index = self.get_atom_index(
                                             base_id, b_c
                                         )

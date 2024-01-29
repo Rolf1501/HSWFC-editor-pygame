@@ -354,8 +354,8 @@ terminals, adjs, def_w = Toy().example_three_tiles_3d_fallback()
 
 # grid_extent = Coord(50, 1, 50)
 # grid_extent = Coord(5, 1, 5)
-# grid_extent = Coord(5, 5, 5)
-grid_extent = Coord(16, 16, 16)
+grid_extent = Coord(5, 5, 5)
+# grid_extent = Coord(16, 16, 16)
 start_coord = grid_extent * Coord(0.5, 0, 0.5)
 start_coord = Coord(int(start_coord.x), int(start_coord.y), int(start_coord.z))
 
