@@ -4,8 +4,15 @@ from coord import Coord
 from grid import Grid
 from toy_examples import ToyExamples as Toy
 from wfc import WFC
+from direct.gui.DirectGui import *
 
-from panda3d.core import NodePath
+from panda3d.core import (
+    NodePath,
+    load_prc_file,
+    WindowProperties,
+    Camera,
+    OrthographicLens,
+)
 from util_data import Colour
 from queue import Queue as Q
 from numpy.random import random
@@ -27,6 +34,7 @@ class WFCAnimator(Animator):
     ):
         self.wfc = wfc
         self.init_camera_params(grid_w, grid_h, grid_d, unit_dims)
+
         # Keep reference from canvas to model.
         # self.canvas = Grid(grid_w, grid_h, grid_d, default_fill_value=-1)
         self.colours = Grid(grid_w, grid_h, grid_d, default_fill_value=Q())
@@ -34,6 +42,13 @@ class WFCAnimator(Animator):
 
         self.shown_model_index = 0
         self.pending_models = 0
+
+        self.window_width, self.window_height = 800, 800
+        props = WindowProperties()
+        props.setSize(self.window_width, self.window_height)
+        self.win.request_properties(props)
+
+        self.aspect_ratio = self.get_aspect_ratio()
 
         self.manual()
 
@@ -43,11 +58,38 @@ class WFCAnimator(Animator):
         self.hover_mode = False
 
         # self.init_info_grid()
+        self.init_collider()
         self.init_key_events()
         self.init_mouse_events()
         self.init_tasks()
         self.init_axes()
-        self.init_collider()
+        self.init_gui()
+
+    def init_gui(self):
+        self.start_screen = DirectFrame(
+            frameSize=(0, 0.2, 0, 0.2), pos=(-1, 1, -1), parent=self.aspect2d
+        )
+        self.start_screen2 = DirectFrame(
+            frameSize=(0, 0.2, 0, 0.3),
+            pos=(-(800 / 600.0), 1, -1),
+            parent=self.aspect2d,
+        )
+
+        # self.display_region = self.win.make_display_region()
+        # self.display_region.sort = 20
+        # self.dr_cam = NodePath(Camera("dr_cam"))
+        # lens = OrthographicLens()
+        # lens.set_film_size(2, 2)
+        # lens.set_near_far(-1000, 1000)
+        # self.dr_cam.node().set_lens(lens)
+
+        # self.dr_render2d = NodePath("dr_render2d")
+        # self.dr_render2d.set_depth_test(False)
+        # self.dr_render2d.set_depth_write(False)
+        # self.dr_cam.reparent_to(self.dr_render2d)
+        # self.display_region.set_camera(self.dr_cam)
+        print(self.win.get_x_size())
+        print(self.win.get_y_size())
 
     def init_camera_params(self, grid_w, grid_h, grid_d, unit_dims):
         self.unit_dims = unit_dims
@@ -84,6 +126,14 @@ class WFCAnimator(Animator):
         self.task_mgr.add(self.wfc_collapse_once, "collapse")
         self.task_mgr.add(self.prop_info_hover, "prop_info")
         self.task_mgr.add(self.enable_collapse_repeat, "enable_collapse_repeat")
+        self.task_mgr.add(self.window_listener, "window_listener")
+
+    def window_listener(self, task):
+        if self.aspect_ratio != self.get_aspect_ratio():
+            self.aspect_ratio = self.get_aspect_ratio()
+            print("Ratio changed!", self.aspect_ratio)
+
+        return task.cont
 
     def init_key_events(self):
         self.accept("p", self.toggle_paused)
@@ -164,9 +214,9 @@ class WFCAnimator(Animator):
             comm.communicate("WFC is already done")
 
     def mouse_select(self):
-        if base.mouseWatcherNode.has_mouse():
-            mouse_pos = base.mouseWatcherNode.get_mouse()
-            self.picker_ray.set_from_lens(base.camNode, mouse_pos.x, mouse_pos.y)
+        if self.mouseWatcherNode.has_mouse():
+            mouse_pos = self.mouseWatcherNode.get_mouse()
+            self.picker_ray.set_from_lens(self.camNode, mouse_pos.x, mouse_pos.y)
             self.collision_traverser.traverse(self.render)
             if self.collision_handler_queue.get_num_entries() > 0:
                 self.collision_handler_queue.sort_entries()

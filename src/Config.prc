@@ -21,7 +21,7 @@ load-display pandagl
 # while -1 lets the window manager choose the position.
 
 win-origin -2 -2
-win-size 800 600
+win-size 800 800
 
 # Uncomment this line if you want to run Panda fullscreen instead of
 # in a window.
