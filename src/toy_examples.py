@@ -20,16 +20,10 @@ class ToyExamples:
 
     def example_meta_tiles_2():
         terminals = {
-            0: Terminal(
-                BB.from_whd(2, 1, 3), Colour(0.3, 0.6, 0.6, 1)
-            ),  # 2x3; turquoise ish
-            1: Terminal(
-                BB.from_whd(4, 1, 2), Colour(0.8, 0.3, 0, 1)
-            ),  # 4x2; orange ish
-            2: Terminal(
-                BB.from_whd(3, 1, 1), Colour(0.2, 0.1, 0.8, 1)
-            ),  # 3x1; blue-purple ish
-            -1: Void(BB.from_whd(1, 1, 1), Colour(1, 1, 1, 0.5)),
+            0: Terminal((2, 1, 3), Colour(0.3, 0.6, 0.6, 1)),  # 2x3; turquoise ish
+            1: Terminal((4, 1, 2), Colour(0.8, 0.3, 0, 1)),  # 4x2; orange ish
+            2: Terminal((3, 1, 1), Colour(0.2, 0.1, 0.8, 1)),  # 3x1; blue-purple ish
+            -1: Void((1, 1, 1), Colour(1, 1, 1, 0.5)),
         }
 
         adjacencies = {
@@ -59,17 +53,11 @@ class ToyExamples:
 
     def example_meta_tiles_fit_area():
         terminals = {
-            0: Terminal(
-                BB.from_whd(2, 1, 3), Colour(0.3, 0.6, 0.6, 1)
-            ),  # 2x3; turquoise ish
-            1: Terminal(
-                BB.from_whd(4, 1, 2), Colour(0.8, 0.3, 0, 1)
-            ),  # 4x2; orange ish
-            2: Terminal(
-                BB.from_whd(3, 1, 1), Colour(0.2, 0.1, 0.8, 1)
-            ),  # 3x1; blue-purple ish
-            3: Terminal(BB.from_whd(2, 2, 2), Colour(0.8, 0.1, 0.2, 1)),  # 2x2; red ish
-            -1: Void(BB.from_whd(1, 1, 1), colour=Colour(1, 1, 1, 0.5)),
+            0: Terminal((2, 1, 3), Colour(0.3, 0.6, 0.6, 1)),  # 2x3; turquoise ish
+            1: Terminal((4, 1, 2), Colour(0.8, 0.3, 0, 1)),  # 4x2; orange ish
+            2: Terminal((3, 1, 1), Colour(0.2, 0.1, 0.8, 1)),  # 3x1; blue-purple ish
+            3: Terminal((2, 2, 2), Colour(0.8, 0.1, 0.2, 1)),  # 2x2; red ish
+            -1: Void((1, 1, 1), colour=Colour(1, 1, 1, 0.5)),
         }
 
         adjacencies = {
@@ -115,13 +103,9 @@ class ToyExamples:
 
     def example_meta_tiles_fit_area_simple():
         terminals = {
-            0: Terminal(
-                BB.from_whd(2, 2, 1), Colour(0.3, 0.6, 0.6, 1)
-            ),  # 2x3; turquoise ish
-            1: Terminal(
-                BB.from_whd(3, 1, 2), Colour(0.8, 0.3, 0, 1)
-            ),  # 4x2; orange ish
-            -1: Void(BB.from_whd(1, 1, 1), colour=Colour(1, 1, 1, 0.5)),
+            0: Terminal((2, 2, 1), Colour(0.3, 0.6, 0.6, 1)),  # 2x3; turquoise ish
+            1: Terminal((3, 1, 2), Colour(0.8, 0.3, 0, 1)),  # 4x2; orange ish
+            -1: Void((1, 1, 1), colour=Colour(1, 1, 1, 0.5)),
         }
 
         adjacencies = {
@@ -155,15 +139,11 @@ class ToyExamples:
 
     def example_meta_tiles_zebra_horizontal():
         terminals = {
-            0: Terminal(
-                BB.from_whd(3, 1, 1), Colour(0.3, 0.6, 0.6, 1)
-            ),  # 2x3; turquoise ish
-            1: Terminal(
-                BB.from_whd(3, 1, 1), Colour(0.8, 0.3, 0, 1)
-            ),  # 4x2; orange ish
-            # 2: Terminal(BB.from_whd(3,1,1),  Colour(0.2,0.1,0.8,1)), # 3x1; blue-purple ish
-            # 3: Terminal(BB.from_whd(2,2,2),  Colour(0.8,0.1,0.2,1)), # 3x1; red ish
-            # -1: Void(BB.from_whd(1,1,1)),
+            0: Terminal((3, 1, 1), Colour(0.3, 0.6, 0.6, 1)),  # 2x3; turquoise ish
+            1: Terminal((3, 1, 1), Colour(0.8, 0.3, 0, 1)),  # 4x2; orange ish
+            # 2: Terminal((3,1,1),  Colour(0.2,0.1,0.8,1)), # 3x1; blue-purple ish
+            # 3: Terminal((2,2,2),  Colour(0.8,0.1,0.2,1)), # 3x1; red ish
+            # -1: Void((1,1,1)),
         }
 
         adjacencies = {
@@ -195,11 +175,9 @@ class ToyExamples:
 
     def example_meta_tiles():
         terminals = {
-            0: Terminal(
-                BB.from_whd(2, 1, 3), Colour(0.3, 0.6, 0.6, 1)
-            ),  # 2x3; cyan ish
-            1: Terminal(BB.from_whd(4, 1, 2), Colour(0.8, 0.3, 0, 1)),  # 4x2; orangeish
-            2: Void(BB.from_whd(1, 1, 1)),
+            0: Terminal((2, 1, 3), Colour(0.3, 0.6, 0.6, 1)),  # 2x3; cyan ish
+            1: Terminal((4, 1, 2), Colour(0.8, 0.3, 0, 1)),  # 4x2; orangeish
+            2: Void((1, 1, 1)),
         }
 
         adjacencies = {
@@ -237,42 +215,42 @@ class ToyExamples:
             # |/     |/
             # 0------1
             0: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 SD(north=SP.OPEN, east=SP.OPEN),
                 Colour(0.5, 0, 0, 1),
             ),  # red; corner_04
             1: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 SD(north=SP.OPEN, west=SP.OPEN),
                 Colour(0, 0.5, 0, 1),
             ),  # green; corner_15
             2: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 SD(south=SP.OPEN, west=SP.OPEN),
                 Colour(0, 0, 0.5, 1),
             ),  # blue; corner_26
             3: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 SD(south=SP.OPEN, east=SP.OPEN),
                 Colour(0, 0.5, 0.5, 1),
             ),  # cyan; corner_37
             4: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 SD(north=SP.OPEN, east=SP.OPEN, west=SP.OPEN),
                 Colour(0.5, 0, 0.5, 1),
             ),  # magenta; face_0154
             5: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 SD(south=SP.OPEN, east=SP.OPEN, west=SP.OPEN),
                 Colour(0.5, 0.5, 0, 1),
             ),  # yellow; face_3267
             6: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 SD(north=SP.OPEN, south=SP.OPEN, east=SP.OPEN),
                 Colour(0, 0, 0, 1),
             ),  # black; face_0374
             7: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 SD(north=SP.OPEN, south=SP.OPEN, west=SP.OPEN),
                 Colour(0.5, 0.5, 0.5, 1),
             ),  # white; face_1265
@@ -339,8 +317,8 @@ class ToyExamples:
 
     def example_zebra_horizontal():
         terminals = {
-            0: Terminal(BB.from_whd(1, 1, 1), Colour(1, 1, 1, 1)),  # white
-            1: Terminal(BB.from_whd(1, 1, 1), Colour(0, 0, 0, 1)),  # black
+            0: Terminal((1, 1, 1), Colour(1, 1, 1, 1)),  # white
+            1: Terminal((1, 1, 1), Colour(0, 0, 0, 1)),  # black
         }
 
         adjs = {
@@ -356,9 +334,9 @@ class ToyExamples:
 
     def example_zebra_horizontal_3():
         terminals = {
-            0: Terminal(BB.from_whd(1, 1, 1), Colour(1, 1, 1, 1)),  # white
-            1: Terminal(BB.from_whd(1, 1, 1), Colour(0, 0, 0, 1)),  # black
-            2: Terminal(BB.from_whd(1, 1, 1), Colour(1, 1, 0, 1)),  # yellow
+            0: Terminal((1, 1, 1), Colour(1, 1, 1, 1)),  # white
+            1: Terminal((1, 1, 1), Colour(0, 0, 0, 1)),  # black
+            2: Terminal((1, 1, 1), Colour(1, 1, 0, 1)),  # yellow
         }
 
         adjs = {
@@ -377,9 +355,9 @@ class ToyExamples:
 
     def example_zebra_vertical_3():
         terminals = {
-            0: Terminal(BB.from_whd(1, 1, 1), Colour(1, 1, 1, 1)),  # white
-            1: Terminal(BB.from_whd(1, 1, 1), Colour(0, 0, 0, 1)),  # black
-            2: Terminal(BB.from_whd(1, 1, 1), Colour(1, 1, 0, 1)),  # yellow
+            0: Terminal((1, 1, 1), Colour(1, 1, 1, 1)),  # white
+            1: Terminal((1, 1, 1), Colour(0, 0, 0, 1)),  # black
+            2: Terminal((1, 1, 1), Colour(1, 1, 0, 1)),  # yellow
         }
 
         adjs = {
@@ -398,9 +376,9 @@ class ToyExamples:
 
     def example_zebra_vertical():
         terminals = {
-            0: Terminal(BB.from_whd(1, 1, 1), Colour(0.7, 0.7, 0.7, 1)),  # white
+            0: Terminal((1, 1, 1), Colour(0.7, 0.7, 0.7, 1)),  # white
             1: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 Colour(0.05, 0.05, 0.05, 1),
             ),  # black
         }
@@ -418,8 +396,8 @@ class ToyExamples:
 
     def example_slanted():
         terminals = {
-            0: Terminal(BB.from_whd(1, 1, 1), Colour(0.8, 0, 0, 1)),
-            1: Void(BB.from_whd(1, 1, 1)),
+            0: Terminal((1, 1, 1), Colour(0.8, 0, 0, 1)),
+            1: Void((1, 1, 1)),
         }
 
         adjs = {
@@ -439,11 +417,11 @@ class ToyExamples:
 
         terminals = {
             0: Terminal(
-                BB.from_whd(x, y, z),
+                (x, y, z),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask0,
             ),
-            1: Terminal(BB.from_whd(x, y, z), Colour(0.8, 0.3, 0, 1), mask=mask0),
+            1: Terminal((x, y, z), Colour(0.8, 0.3, 0, 1), mask=mask0),
         }
 
         adjacencies = {
@@ -477,12 +455,12 @@ class ToyExamples:
 
         terminals = {
             0: Terminal(
-                BB.from_whd(x0, y0, z0),
+                (x0, y0, z0),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask0,
             ),
             1: Terminal(
-                BB.from_whd(x1, y1, z1),
+                (x1, y1, z1),
                 Colour(0.8, 0.3, 0, 1),
                 mask=mask1,
             ),
@@ -528,16 +506,16 @@ class ToyExamples:
 
         terminals = {
             0: Terminal(
-                BB.from_whd(x0, y0, z0),
+                (x0, y0, z0),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask0,
             ),
             1: Terminal(
-                BB.from_whd(x1, y1, z1),
+                (x1, y1, z1),
                 Colour(0.8, 0.3, 0, 1),
                 mask=mask1,
             ),
-            2: Terminal(BB.from_whd(x2, y2, z2), Colour(1, 1, 1, 0.5), mask=mask2),
+            2: Terminal((x2, y2, z2), Colour(1, 1, 1, 0.5), mask=mask2),
         }
 
         fallback_weight = 0.000001
@@ -604,12 +582,12 @@ class ToyExamples:
         x1, y1, z1 = 2, 1, 2
         terminals = {
             0: Terminal(
-                BB.from_whd(x0, y0, z0),
+                (x0, y0, z0),
                 Colour(0.3, 0.6, 0.6, 1),
                 distinct_orientations=[0, 1],
             ),
             1: Terminal(
-                BB.from_whd(x1, y1, z1),
+                (x1, y1, z1),
                 Colour(0.8, 0.3, 0, 1),
             ),
         }
@@ -644,11 +622,11 @@ class ToyExamples:
 
         terminals = {
             0: Terminal(
-                BB.from_whd(x, y, z),
+                (x, y, z),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask0,
             ),
-            1: Terminal(BB.from_whd(x, y, z), Colour(0.8, 0.3, 0, 1), mask=mask1),
+            1: Terminal((x, y, z), Colour(0.8, 0.3, 0, 1), mask=mask1),
         }
 
         adjacencies = {
@@ -677,16 +655,16 @@ class ToyExamples:
         mask412 = np.full((y, x, z), True)
         terminals = {
             0: Terminal(
-                BB.from_whd(x, y, z),
+                (x, y, z),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask412,
             ),  # 4x2; cyan ish
             1: Terminal(
-                BB.from_whd(x, y, z),
+                (x, y, z),
                 Colour(0.8, 0.3, 0, 1),
                 mask=mask412,
             ),  # 4x2; orangeish
-            2: Void(BB.from_whd(1, 1, 1), Colour(1, 1, 1, 0.5)),
+            2: Void((1, 1, 1), Colour(1, 1, 1, 0.5)),
         }
 
         adjacencies = {
@@ -726,16 +704,16 @@ class ToyExamples:
         mask1 = np.full((y1, x1, z1), True)
         terminals = {
             0: Terminal(
-                BB.from_whd(x0, y0, z0),
+                (x0, y0, z0),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask0,
             ),  # cyan ish
             1: Terminal(
-                BB.from_whd(x1, y1, z1),
+                (x1, y1, z1),
                 Colour(0.8, 0.3, 0, 1),
                 mask=mask1,
             ),  # orangeish
-            2: Void(BB.from_whd(1, 1, 1), Colour(1, 1, 1, 0.5)),
+            2: Void((1, 1, 1), Colour(1, 1, 1, 0.5)),
         }
 
         adjacencies = {
