@@ -26,17 +26,7 @@ class WFCAnimator(Animator):
         self, wfc: WFC, grid_w=20, grid_h=20, grid_d=5, unit_dims=Coord(1, 1, 1)
     ):
         self.wfc = wfc
-        self.unit_dims = unit_dims
-        lookat_point = Coord(grid_w, grid_h, -grid_d).scaled(0.5)
-        default_cam_pos = lookat_point + Coord(0, grid_h + 50, 0)
-        self.lookat_point = lookat_point
-        self.default_camera_pos = default_cam_pos
-        super().__init__(
-            lookat_point=lookat_point,
-            default_camera_pos=default_cam_pos,
-            unit_dims=unit_dims,
-        )
-
+        self.init_camera_params(grid_w, grid_h, grid_d, unit_dims)
         # Keep reference from canvas to model.
         # self.canvas = Grid(grid_w, grid_h, grid_d, default_fill_value=-1)
         self.colours = Grid(grid_w, grid_h, grid_d, default_fill_value=Q())
@@ -52,15 +42,32 @@ class WFCAnimator(Animator):
 
         self.hover_mode = False
 
-        self.axis_system = self.create_axes()
-
-        self.collision_traverser = CollisionTraverser()
-        self.collision_handler_queue = CollisionHandlerQueue()
-
         # self.init_info_grid()
         self.init_key_events()
         self.init_mouse_events()
         self.init_tasks()
+        self.init_axes()
+        self.init_collider()
+
+    def init_camera_params(self, grid_w, grid_h, grid_d, unit_dims):
+        self.unit_dims = unit_dims
+        lookat_point = Coord(grid_w, grid_h, -grid_d).scaled(0.5)
+        default_cam_pos = lookat_point + Coord(0, grid_h + 50, 0)
+        self.lookat_point = lookat_point
+        self.default_camera_pos = default_cam_pos
+        super().__init__(
+            lookat_point=lookat_point,
+            default_camera_pos=default_cam_pos,
+            unit_dims=unit_dims,
+        )
+        pass
+
+    def init_collider(self):
+        self.collision_traverser = CollisionTraverser()
+        self.collision_handler_queue = CollisionHandlerQueue()
+
+    def init_axes(self):
+        self.axis_system = self.create_axes()
 
     def init_mouse_events(self):
         self.picker_node = CollisionNode("mouse_ray")
