@@ -1,13 +1,13 @@
 import json
-import numpy as np
 from os import makedirs
 from os.path import exists
 from pathlib import Path
 
 from adjacencies import Adjacency, Relation as R
 from coord import Coord
-from dataclass_util import get_init_field_names
+from dataclass_util import get_init_field_names, dict_to_dataclass_instance
 from terminal import Terminal
+from toy_examples import ToyExamples as Toy, Example
 from util_data import Colour, Cardinals as C
 from offsets import Offset
 
@@ -16,11 +16,11 @@ class JSONParser:
     def __init__(self) -> None:
         self.terminal_file = "terminals.json"
         self.terminal_root = "terminals"
-        self.adjacency_file = "adjacency.json"
+        self.examples_file = "example.json"
         self.json_folder = "json"
         self.json_path = self.get_src_dir().joinpath(self.json_folder)
         self.terminal_path = self.json_path.joinpath(self.terminal_file)
-        self.adjacency_path = self.json_path.joinpath(self.adjacency_file)
+        self.examples_path = self.json_path.joinpath(self.examples_file)
         self._init_file(self.terminal_path)
 
     def get_src_dir(self):
@@ -36,15 +36,22 @@ class JSONParser:
             curr_data[str(terminal_id)] = new_terminal.to_json()
             self.write_to_json(curr_data, self.terminal_path)
 
-    def append_adjacency(self, adjacency: Adjacency, example_name):
-        with open(self.adjacency_path) as file:
+    def write_example(self, example: Example):
+        with open(self.examples_path) as file:
+            curr_data = json.load(file)
+            curr_data[example.name] = example.to_json()
+            print("TYPE: ", type(curr_data))
+            self.write_to_json(curr_data, self.examples_path)
+
+    def update_example_adjacency(self, adjacency: list[Adjacency], example_name):
+        with open(self.examples_path) as file:
             curr_data = json.load(file)
             if not example_name in curr_data or not isinstance(
                 curr_data[example_name], list
             ):
                 curr_data[example_name] = []
             curr_data[example_name].append(adjacency.to_json())
-            self.write_to_json(curr_data, self.adjacency_path)
+            self.write_to_json(curr_data, self.examples_path)
 
     def _init_file(self, path: Path):
         if not exists(path.parent):
@@ -62,19 +69,27 @@ class JSONParser:
 
     def read_terminals(self):
         terminals = {}
-        with open(self.terminal_path) as file:
+        with open(self.terminal_path, "r") as file:
             t_json = json.load(file)
-
-            fields = get_init_field_names(Terminal)
-            for t in t_json.keys():
-                # Translate the json data into terminal instances, following a dictionary approach.
-                terminals[t] = Terminal(**{f: t_json[t][f] for f in fields})
+            terminals = {
+                t: dict_to_dataclass_instance(Terminal, t_json[t])
+                for t in t_json.keys()
+            }
 
         return terminals
 
-    def read_adjacencies(self):
+    def read_examples(self):
+        examples = {}
+        with open(self.examples_path, "r") as file:
+            e_json = json.load(file)
+            examples = {
+                e: dict_to_dataclass_instance(Example, e_json[e]) for e in e_json.keys()
+            }
+        return examples
+
+    def adjacency_from_json(self):
         adjacencies = []
-        with open(self.adjacency_path) as file:
+        with open(self.examples_path) as file:
             a_json = json.load(file)
             fields = get_init_field_names(Adjacency)
             for example in a_json.keys():
@@ -87,60 +102,21 @@ class JSONParser:
         for t in terminals:
             self.append_terminal(terminals[t], t)
 
-    def write_adjacencies(self, adjacencies: list[Adjacency], example_name):
-        for a in adjacencies:
-            self.append_adjacency(a, example_name)
-
 
 jsonparser = JSONParser()
 
-
-x0, y0, z0 = 2, 2, 2
-mask0 = np.full((y0, x0, z0), True)
-mask0[0, 0, 0] = False  # Create a small L shape
-mask0[0, 1, 0] = False  # Create a small L shape
-x1, y1, z1 = 1, 1, 1
-mask1 = np.full((y1, x1, z1), True)
-
-terminals = {
-    0: Terminal(
-        Coord(x0, y0, z0),
-        Colour(0.3, 0.6, 0.6, 1),
-        mask=mask0,
-    ),
-    1: Terminal(
-        Coord(x1, y1, z1),
-        Colour(0.8, 0.3, 0, 1),
-        mask=mask1,
-    ),
-}
-
-adjacencies = [
-    Adjacency(0, [R(0, 1)], Offset(*C.NORTH.value), True),
-    Adjacency(0, [R(0, 1)], Offset(*C.EAST.value), True),
-    Adjacency(0, [R(0, 1)], Offset(*C.SOUTH.value), True),
-    Adjacency(0, [R(0, 1)], Offset(*C.WEST.value), True),
-    Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.NORTH.value), True),
-    Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.EAST.value), True),
-    Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.SOUTH.value), True),
-    Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.WEST.value), True),
-    Adjacency(2, [R(0, 1), R(1, 1), R(2, 1)], Offset(*C.NORTH.value), True),
-    Adjacency(2, [R(0, 1), R(1, 1), R(2, 1)], Offset(*C.EAST.value), True),
-    Adjacency(2, [R(0, 1), R(1, 1), R(2, 1)], Offset(*C.SOUTH.value), True),
-    Adjacency(2, [R(0, 1), R(1, 1), R(2, 1)], Offset(*C.WEST.value), True),
-]
-
-
+terminals, adjacencies, weights = Toy.example_rotated_2d()
 jsonparser._reset_file(jsonparser.terminal_path)
-jsonparser._reset_file(jsonparser.adjacency_path)
+jsonparser._reset_file(jsonparser.examples_path)
 jsonparser.write_terminals(terminals)
-jsonparser.write_adjacencies(adjacencies, "test")
+jsonparser.write_example(Example("test", list(terminals.keys()), adjacencies, weights))
+
 
 ts = jsonparser.read_terminals()
-a = jsonparser.read_adjacencies()
+# for i in ts:
+#     print(i, ts[i])
+# a = jsonparser.read_examples()
 
-for i in ts:
-    print(i, ts[i])
 
-for ai in a:
-    print(ai)
+# for ai in a:
+#     print(f"\nEXAMPLE {ai}: {a[ai]}\n")
