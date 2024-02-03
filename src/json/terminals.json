@@ -1,5 +1,5 @@
 {
-  "1": {
+  "0": {
     "extent": [
       2,
       2,
@@ -29,6 +29,30 @@
         ],
         [
           true,
+          true
+        ]
+      ]
+    ],
+    "distinct_orientations": [
+      0
+    ],
+    "description": ""
+  },
+  "1": {
+    "extent": [
+      1,
+      1,
+      1
+    ],
+    "colour": [
+      0.8,
+      0.3,
+      0,
+      1
+    ],
+    "mask": [
+      [
+        [
           true
         ]
       ]

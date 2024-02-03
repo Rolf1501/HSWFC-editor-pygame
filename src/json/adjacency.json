@@ -1,0 +1,316 @@
+{
+  "test": [
+    {
+      "source": 0,
+      "allowed_neighbours": [
+        {
+          "other": 0,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        }
+      ],
+      "offset": [
+        0,
+        0,
+        1
+      ],
+      "symmetric": true,
+      "properties": []
+    },
+    {
+      "source": 0,
+      "allowed_neighbours": [
+        {
+          "other": 0,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        }
+      ],
+      "offset": [
+        1,
+        0,
+        0
+      ],
+      "symmetric": true,
+      "properties": []
+    },
+    {
+      "source": 0,
+      "allowed_neighbours": [
+        {
+          "other": 0,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        }
+      ],
+      "offset": [
+        0,
+        0,
+        -1
+      ],
+      "symmetric": true,
+      "properties": []
+    },
+    {
+      "source": 0,
+      "allowed_neighbours": [
+        {
+          "other": 0,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        }
+      ],
+      "offset": [
+        -1,
+        0,
+        0
+      ],
+      "symmetric": true,
+      "properties": []
+    },
+    {
+      "source": 1,
+      "allowed_neighbours": [
+        {
+          "other": 0,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        },
+        {
+          "other": 1,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        }
+      ],
+      "offset": [
+        0,
+        0,
+        1
+      ],
+      "symmetric": true,
+      "properties": []
+    },
+    {
+      "source": 1,
+      "allowed_neighbours": [
+        {
+          "other": 0,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        },
+        {
+          "other": 1,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        }
+      ],
+      "offset": [
+        1,
+        0,
+        0
+      ],
+      "symmetric": true,
+      "properties": []
+    },
+    {
+      "source": 1,
+      "allowed_neighbours": [
+        {
+          "other": 0,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        },
+        {
+          "other": 1,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        }
+      ],
+      "offset": [
+        0,
+        0,
+        -1
+      ],
+      "symmetric": true,
+      "properties": []
+    },
+    {
+      "source": 1,
+      "allowed_neighbours": [
+        {
+          "other": 0,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        },
+        {
+          "other": 1,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        }
+      ],
+      "offset": [
+        -1,
+        0,
+        0
+      ],
+      "symmetric": true,
+      "properties": []
+    },
+    {
+      "source": 2,
+      "allowed_neighbours": [
+        {
+          "other": 0,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        },
+        {
+          "other": 1,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        },
+        {
+          "other": 2,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        }
+      ],
+      "offset": [
+        0,
+        0,
+        1
+      ],
+      "symmetric": true,
+      "properties": []
+    },
+    {
+      "source": 2,
+      "allowed_neighbours": [
+        {
+          "other": 0,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        },
+        {
+          "other": 1,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        },
+        {
+          "other": 2,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        }
+      ],
+      "offset": [
+        1,
+        0,
+        0
+      ],
+      "symmetric": true,
+      "properties": []
+    },
+    {
+      "source": 2,
+      "allowed_neighbours": [
+        {
+          "other": 0,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        },
+        {
+          "other": 1,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        },
+        {
+          "other": 2,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        }
+      ],
+      "offset": [
+        0,
+        0,
+        -1
+      ],
+      "symmetric": true,
+      "properties": []
+    },
+    {
+      "source": 2,
+      "allowed_neighbours": [
+        {
+          "other": 0,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        },
+        {
+          "other": 1,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        },
+        {
+          "other": 2,
+          "weight": 1,
+          "rotations": [
+            0
+          ]
+        }
+      ],
+      "offset": [
+        -1,
+        0,
+        0
+      ],
+      "symmetric": true,
+      "properties": []
+    }
+  ]
+}

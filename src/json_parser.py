@@ -4,10 +4,12 @@ from os import makedirs
 from os.path import exists
 from pathlib import Path
 
+from adjacencies import Adjacency, Relation as R
 from coord import Coord
 from dataclass_util import get_init_field_names
 from terminal import Terminal
-from util_data import Colour
+from util_data import Colour, Cardinals as C
+from offsets import Offset
 
 
 class JSONParser:
@@ -19,7 +21,7 @@ class JSONParser:
         self.json_path = self.get_src_dir().joinpath(self.json_folder)
         self.terminal_path = self.json_path.joinpath(self.terminal_file)
         self.adjacency_path = self.json_path.joinpath(self.adjacency_file)
-        self.init_file(self.terminal_path)
+        self._init_file(self.terminal_path)
 
     def get_src_dir(self):
         return Path(__file__).parent
@@ -28,13 +30,23 @@ class JSONParser:
         with open(path, "w") as file:
             json.dump(content, file, indent=2)
 
-    def append_terminal(self, new_terminal, terminal_id):
+    def append_terminal(self, new_terminal: Terminal, terminal_id):
         with open(self.terminal_path) as file:
             curr_data = json.load(file)
-            curr_data[str(terminal_id)] = new_terminal
+            curr_data[str(terminal_id)] = new_terminal.to_json()
             self.write_to_json(curr_data, self.terminal_path)
 
-    def init_file(self, path: Path):
+    def append_adjacency(self, adjacency: Adjacency, example_name):
+        with open(self.adjacency_path) as file:
+            curr_data = json.load(file)
+            if not example_name in curr_data or not isinstance(
+                curr_data[example_name], list
+            ):
+                curr_data[example_name] = []
+            curr_data[example_name].append(adjacency.to_json())
+            self.write_to_json(curr_data, self.adjacency_path)
+
+    def _init_file(self, path: Path):
         if not exists(path.parent):
             makedirs(path.parent)
         # Make sure the file can be loaded properly, otherwise reset.
@@ -42,23 +54,42 @@ class JSONParser:
             with open(path) as file:
                 json.load(file)
         except:
-            self.reset_file(path)
+            self._reset_file(path)
 
-    def reset_file(self, path):
+    def _reset_file(self, path):
         with open(path, "w") as file:
             json.dump({}, file)
 
-    def json_to_terminals(self):
+    def read_terminals(self):
+        terminals = {}
         with open(self.terminal_path) as file:
             t_json = json.load(file)
-            terminals = {}
 
+            fields = get_init_field_names(Terminal)
             for t in t_json.keys():
                 # Translate the json data into terminal instances, following a dictionary approach.
-                fields = get_init_field_names(Terminal)
                 terminals[t] = Terminal(**{f: t_json[t][f] for f in fields})
 
-            return terminals
+        return terminals
+
+    def read_adjacencies(self):
+        adjacencies = []
+        with open(self.adjacency_path) as file:
+            a_json = json.load(file)
+            fields = get_init_field_names(Adjacency)
+            for example in a_json.keys():
+                for a in a_json[example]:
+                    adjacencies.append(Adjacency(**{f: a[f] for f in fields}))
+
+        return adjacencies
+
+    def write_terminals(self, terminals: list[Terminal]):
+        for t in terminals:
+            self.append_terminal(terminals[t], t)
+
+    def write_adjacencies(self, adjacencies: list[Adjacency], example_name):
+        for a in adjacencies:
+            self.append_adjacency(a, example_name)
 
 
 jsonparser = JSONParser()
@@ -83,8 +114,33 @@ terminals = {
         mask=mask1,
     ),
 }
-jsonparser.append_terminal(terminals[0].to_json(), 1)
-ts = jsonparser.json_to_terminals()
+
+adjacencies = [
+    Adjacency(0, [R(0, 1)], Offset(*C.NORTH.value), True),
+    Adjacency(0, [R(0, 1)], Offset(*C.EAST.value), True),
+    Adjacency(0, [R(0, 1)], Offset(*C.SOUTH.value), True),
+    Adjacency(0, [R(0, 1)], Offset(*C.WEST.value), True),
+    Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.NORTH.value), True),
+    Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.EAST.value), True),
+    Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.SOUTH.value), True),
+    Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.WEST.value), True),
+    Adjacency(2, [R(0, 1), R(1, 1), R(2, 1)], Offset(*C.NORTH.value), True),
+    Adjacency(2, [R(0, 1), R(1, 1), R(2, 1)], Offset(*C.EAST.value), True),
+    Adjacency(2, [R(0, 1), R(1, 1), R(2, 1)], Offset(*C.SOUTH.value), True),
+    Adjacency(2, [R(0, 1), R(1, 1), R(2, 1)], Offset(*C.WEST.value), True),
+]
+
+
+jsonparser._reset_file(jsonparser.terminal_path)
+jsonparser._reset_file(jsonparser.adjacency_path)
+jsonparser.write_terminals(terminals)
+jsonparser.write_adjacencies(adjacencies, "test")
+
+ts = jsonparser.read_terminals()
+a = jsonparser.read_adjacencies()
 
 for i in ts:
-    print(ts[i])
+    print(i, ts[i])
+
+for ai in a:
+    print(ai)

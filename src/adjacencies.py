@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 import numpy as np
 from offsets import OffsetFactory, Offset
 from bidict import bidict
@@ -17,6 +17,9 @@ class Relation:
     weight: float
     rotations: list[int] = field(default_factory=lambda: [0])
 
+    def to_json(self):
+        return asdict(self)
+
 
 @dataclass
 class Adjacency:
@@ -29,6 +32,18 @@ class Adjacency:
     def __post_init__(self):
         if isinstance(self.allowed_neighbours, set):
             self.allowed_neighbours = list(self.allowed_neighbours)
+        self.allowed_neighbours = [
+            Relation(**a) if isinstance(a, dict) else a for a in self.allowed_neighbours
+        ]
+
+    def to_json(self):
+        return {
+            "source": self.source,
+            "allowed_neighbours": [r.to_json() for r in self.allowed_neighbours],
+            "offset": self.offset,
+            "symmetric": self.symmetric,
+            "properties": self.properties,
+        }
 
 
 class AdjacencyAny(Adjacency):
