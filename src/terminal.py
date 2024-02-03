@@ -50,10 +50,6 @@ class Terminal:
             "description": self.description,
         }
 
-    @staticmethod
-    def get_init_field_names():
-        return [f.name for f in fields(Terminal) if f.init]
-
     def calc_atom_indices(self, mask: np.ndarray):
         # Find all cells in the mask that are not empty, these are the atoms uniquely identified by their index.
         non_empty_cells = np.transpose(mask.nonzero())
