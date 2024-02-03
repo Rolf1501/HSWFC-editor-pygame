@@ -4,6 +4,7 @@ from side_descriptor import SidesDescriptor as SD, SideProperties as SP
 from adjacencies import Adjacency, AdjacencyAny, Relation as R
 from offsets import Offset, OffsetFactory
 from util_data import Cardinals as C, Dimensions as D, Colour
+from coord import Coord
 import numpy as np
 
 
@@ -417,11 +418,11 @@ class ToyExamples:
 
         terminals = {
             0: Terminal(
-                (x, y, z),
+                Coord(x, y, z),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask0,
             ),
-            1: Terminal((x, y, z), Colour(0.8, 0.3, 0, 1), mask=mask0),
+            1: Terminal(Coord(x, y, z), Colour(0.8, 0.3, 0, 1), mask=mask0),
         }
 
         adjacencies = {
@@ -455,12 +456,12 @@ class ToyExamples:
 
         terminals = {
             0: Terminal(
-                (x0, y0, z0),
+                Coord(x0, y0, z0),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask0,
             ),
             1: Terminal(
-                (x1, y1, z1),
+                Coord(x1, y1, z1),
                 Colour(0.8, 0.3, 0, 1),
                 mask=mask1,
             ),
@@ -502,20 +503,20 @@ class ToyExamples:
         mask1[1, 1, 0] = False  # Create a small L shape
 
         x2, y2, z2 = 1, 1, 1
-        mask2 = np.full((x2, y2, z2), True)
+        mask2 = np.full(Coord(x2, y2, z2), True)
 
         terminals = {
             0: Terminal(
-                (x0, y0, z0),
+                Coord(x0, y0, z0),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask0,
             ),
             1: Terminal(
-                (x1, y1, z1),
+                Coord(x1, y1, z1),
                 Colour(0.8, 0.3, 0, 1),
                 mask=mask1,
             ),
-            2: Terminal((x2, y2, z2), Colour(1, 1, 1, 0.5), mask=mask2),
+            2: Terminal(Coord(x2, y2, z2), Colour(1, 1, 1, 0.5), mask=mask2),
         }
 
         fallback_weight = 0.000001
@@ -582,12 +583,12 @@ class ToyExamples:
         x1, y1, z1 = 2, 1, 2
         terminals = {
             0: Terminal(
-                (x0, y0, z0),
+                Coord(x0, y0, z0),
                 Colour(0.3, 0.6, 0.6, 1),
                 distinct_orientations=[0, 1],
             ),
             1: Terminal(
-                (x1, y1, z1),
+                Coord(x1, y1, z1),
                 Colour(0.8, 0.3, 0, 1),
             ),
         }
@@ -622,11 +623,11 @@ class ToyExamples:
 
         terminals = {
             0: Terminal(
-                (x, y, z),
+                Coord(x, y, z),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask0,
             ),
-            1: Terminal((x, y, z), Colour(0.8, 0.3, 0, 1), mask=mask1),
+            1: Terminal(Coord(x, y, z), Colour(0.8, 0.3, 0, 1), mask=mask1),
         }
 
         adjacencies = {
@@ -655,12 +656,12 @@ class ToyExamples:
         mask412 = np.full((y, x, z), True)
         terminals = {
             0: Terminal(
-                (x, y, z),
+                Coord(x, y, z),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask412,
             ),  # 4x2; cyan ish
             1: Terminal(
-                (x, y, z),
+                Coord(x, y, z),
                 Colour(0.8, 0.3, 0, 1),
                 mask=mask412,
             ),  # 4x2; orangeish
@@ -704,12 +705,12 @@ class ToyExamples:
         mask1 = np.full((y1, x1, z1), True)
         terminals = {
             0: Terminal(
-                (x0, y0, z0),
+                Coord(x0, y0, z0),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask0,
             ),  # cyan ish
             1: Terminal(
-                (x1, y1, z1),
+                Coord(x1, y1, z1),
                 Colour(0.8, 0.3, 0, 1),
                 mask=mask1,
             ),  # orangeish

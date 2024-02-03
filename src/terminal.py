@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 import numpy as np
 
 from atom import Atom
@@ -13,14 +13,13 @@ from util_data import Dimensions as D, Cardinals as C, Colour
 class Terminal:
     extent: Coord  # BB with extent relative to grid units
     colour: Colour
-    up: C = field(default=C.TOP)
+    # up: C = field(default=C.TOP)
     # orientation: C = field(default=C.NORTH)
     mask: np.ndarray = field(default=None)
 
     # Specifies how the terminal may be oriented; default 0 means that the terminal may only point North.
     distinct_orientations: list[int] = field(default_factory=lambda: [0])
-    # atom_indices: np.ndarray = field(init=False)
-    # atom_mask: np.ndarray = field(init=False)
+    description: str = field(default="")
     heightmaps: dict = field(init=False)
     n_atoms: int = field(init=False)
     atom_index_to_id_mapping: dict[Coord, Atom] = field(init=False)
@@ -48,7 +47,12 @@ class Terminal:
             "colour": self.colour,
             "mask": self.mask.tolist(),
             "distinct_orientations": self.distinct_orientations,
+            "description": self.description,
         }
+
+    @staticmethod
+    def get_init_field_names():
+        return [f.name for f in fields(Terminal) if f.init]
 
     def calc_atom_indices(self, mask: np.ndarray):
         # Find all cells in the mask that are not empty, these are the atoms uniquely identified by their index.

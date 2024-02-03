@@ -43,11 +43,11 @@ class WFCAnimator(Animator):
         self.hover_mode = False
 
         # self.init_info_grid()
+        self.init_collider()
         self.init_key_events()
         self.init_mouse_events()
         self.init_tasks()
         self.init_axes()
-        self.init_collider()
 
     def init_camera_params(self, grid_w, grid_h, grid_d, unit_dims):
         self.unit_dims = unit_dims
@@ -137,14 +137,15 @@ class WFCAnimator(Animator):
 
     def toggle_hover(self):
         self.hover_mode = not self.hover_mode
+        comm.communicate(f"Turned hover mode {'On' if self.hover_mode else 'Off'}")
 
     def toggle_communicator(self):
         if comm.is_silent():
             comm.restore()
             comm.communicate("Turned communicator On")
         else:
-            comm.communicate("Silenced communicator")
             comm.silence()
+            comm.communicate("Turned communicator Off")
 
     def enable_collapse_repeat(self, task):
         if self.collapse_repeat and not self.wfc.is_done():
@@ -164,9 +165,10 @@ class WFCAnimator(Animator):
             comm.communicate("WFC is already done")
 
     def mouse_select(self):
-        if base.mouseWatcherNode.has_mouse():
-            mouse_pos = base.mouseWatcherNode.get_mouse()
-            self.picker_ray.set_from_lens(base.camNode, mouse_pos.x, mouse_pos.y)
+        if self.mouseWatcherNode.has_mouse():
+            # if base.mouseWatcherNode.has_mouse():
+            mouse_pos = self.mouseWatcherNode.get_mouse()
+            self.picker_ray.set_from_lens(self.camNode, mouse_pos.x, mouse_pos.y)
             self.collision_traverser.traverse(self.render)
             if self.collision_handler_queue.get_num_entries() > 0:
                 self.collision_handler_queue.sort_entries()
