@@ -6,6 +6,33 @@ from offsets import Offset, OffsetFactory
 from util_data import Cardinals as C, Dimensions as D, Colour
 from coord import Coord
 import numpy as np
+from dataclasses import dataclass
+
+
+@dataclass
+class Example:
+    name: str
+    terminal_ids: list[int]
+    adjacencies: list[Adjacency]
+    default_weights: dict[int, float]
+
+    def __post_init__(self):
+        self.adjacencies = [
+            Adjacency(**a) if isinstance(a, dict) else a for a in self.adjacencies
+        ]
+
+    def default_weights_to_list(self):
+        if self.default_weights is not None:
+            return [(t, w) for t, w in self.default_weights.items()]
+        return []
+
+    def to_json(self):
+        return {
+            "name": self.name,
+            "terminal_ids": self.terminal_ids,
+            "adjacencies": [a.to_json() for a in self.adjacencies],
+            "default_weights": self.default_weights_to_list(),
+        }
 
 
 class ToyExamples:
