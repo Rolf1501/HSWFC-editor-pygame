@@ -1,54 +1,13 @@
 import json
-from pathlib import Path
-
-from terminal import Terminal
-from boundingbox import BoundingBox as BB
-from util_data import Colour
-from coord import Coord
 import numpy as np
 from os import makedirs
 from os.path import exists
+from pathlib import Path
 
-
-x0, y0, z0 = 2, 2, 2
-mask0 = np.full((y0, x0, z0), True)
-mask0[0, 0, 0] = False  # Create a small L shape
-mask0[0, 1, 0] = False  # Create a small L shape
-x1, y1, z1 = 1, 1, 1
-mask1 = np.full((y1, x1, z1), True)
-
-terminals = {
-    0: Terminal(
-        Coord(x0, y0, z0),
-        Colour(0.3, 0.6, 0.6, 1),
-        mask=mask0,
-    ),
-    1: Terminal(
-        Coord(x1, y1, z1),
-        Colour(0.8, 0.3, 0, 1),
-        mask=mask1,
-    ),
-}
-json_d = json.dumps(terminals[0].to_json())
-d = json.loads(json_d)
-print(
-    Terminal(
-        extent=d["extent"],
-        colour=d["colour"],
-        mask=np.asarray(d["mask"]),
-        distinct_orientations=d["distinct_orientations"],
-        description=d["description"],
-    )
-)
-
-curr_path = Path(__file__).parent
-json_folder = "json"
-json_file = "json_test.json"
-path = curr_path.joinpath(json_folder, json_file)
-with open(path) as json_data:
-    data = json.load(json_data)
-
-    print(data["example"])
+from coord import Coord
+from dataclass_util import get_init_field_names
+from terminal import Terminal
+from util_data import Colour
 
 
 class JSONParser:
@@ -67,7 +26,7 @@ class JSONParser:
 
     def write_to_json(self, content, path: Path):
         with open(path, "w") as file:
-            json.dump(content, file)
+            json.dump(content, file, indent=2)
 
     def append_terminal(self, new_terminal, terminal_id):
         with open(self.terminal_path) as file:
@@ -95,15 +54,35 @@ class JSONParser:
             terminals = {}
 
             for t in t_json.keys():
-                fields = Terminal.get_init_field_names()
+                # Translate the json data into terminal instances, following a dictionary approach.
+                fields = get_init_field_names(Terminal)
                 terminals[t] = Terminal(**{f: t_json[t][f] for f in fields})
 
-            print(terminals)
             return terminals
 
 
 jsonparser = JSONParser()
 
+
+x0, y0, z0 = 2, 2, 2
+mask0 = np.full((y0, x0, z0), True)
+mask0[0, 0, 0] = False  # Create a small L shape
+mask0[0, 1, 0] = False  # Create a small L shape
+x1, y1, z1 = 1, 1, 1
+mask1 = np.full((y1, x1, z1), True)
+
+terminals = {
+    0: Terminal(
+        Coord(x0, y0, z0),
+        Colour(0.3, 0.6, 0.6, 1),
+        mask=mask0,
+    ),
+    1: Terminal(
+        Coord(x1, y1, z1),
+        Colour(0.8, 0.3, 0, 1),
+        mask=mask1,
+    ),
+}
 jsonparser.append_terminal(terminals[0].to_json(), 1)
 ts = jsonparser.json_to_terminals()
 
