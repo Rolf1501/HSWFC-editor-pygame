@@ -4,7 +4,35 @@ from side_descriptor import SidesDescriptor as SD, SideProperties as SP
 from adjacencies import Adjacency, AdjacencyAny, Relation as R
 from offsets import Offset, OffsetFactory
 from util_data import Cardinals as C, Dimensions as D, Colour
+from coord import Coord
 import numpy as np
+from dataclasses import dataclass
+
+
+@dataclass
+class Example:
+    name: str
+    terminal_ids: list[int]
+    adjacencies: list[Adjacency]
+    default_weights: dict[int, float]
+
+    def __post_init__(self):
+        self.adjacencies = [
+            Adjacency(**a) if isinstance(a, dict) else a for a in self.adjacencies
+        ]
+
+    def default_weights_to_list(self):
+        if self.default_weights is not None:
+            return [(t, w) for t, w in self.default_weights.items()]
+        return []
+
+    def to_json(self):
+        return {
+            "name": self.name,
+            "terminal_ids": self.terminal_ids,
+            "adjacencies": [a.to_json() for a in self.adjacencies],
+            "default_weights": self.default_weights_to_list(),
+        }
 
 
 class ToyExamples:
@@ -20,32 +48,26 @@ class ToyExamples:
 
     def example_meta_tiles_2():
         terminals = {
-            0: Terminal(
-                BB.from_whd(2, 1, 3), Colour(0.3, 0.6, 0.6, 1)
-            ),  # 2x3; turquoise ish
-            1: Terminal(
-                BB.from_whd(4, 1, 2), Colour(0.8, 0.3, 0, 1)
-            ),  # 4x2; orange ish
-            2: Terminal(
-                BB.from_whd(3, 1, 1), Colour(0.2, 0.1, 0.8, 1)
-            ),  # 3x1; blue-purple ish
-            -1: Void(BB.from_whd(1, 1, 1), Colour(1, 1, 1, 0.5)),
+            0: Terminal((2, 1, 3), Colour(0.3, 0.6, 0.6, 1)),  # 2x3; turquoise ish
+            1: Terminal((4, 1, 2), Colour(0.8, 0.3, 0, 1)),  # 4x2; orange ish
+            2: Terminal((3, 1, 1), Colour(0.2, 0.1, 0.8, 1)),  # 3x1; blue-purple ish
+            -1: Void((1, 1, 1), Colour(1, 1, 1, 0.5)),
         }
 
-        adjacencies = {
-            Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(2, {R(0, 1), R(1, 1), R(2, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(2, {R(0, 1), R(1, 1), R(2, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(2, {R(0, 1), R(1, 1), R(2, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(2, {R(0, 1), R(1, 1), R(2, 1)}, Offset(*C.WEST.value), True),
-        }
+        adjacencies = [
+            Adjacency(0, [R(0, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.EAST.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.WEST.value), True),
+            Adjacency(2, [R(0, 1), R(1, 1), R(2, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(2, [R(0, 1), R(1, 1), R(2, 1)], Offset(*C.EAST.value), True),
+            Adjacency(2, [R(0, 1), R(1, 1), R(2, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(2, [R(0, 1), R(1, 1), R(2, 1)], Offset(*C.WEST.value), True),
+        ]
 
         top_bottom_any = {
             AdjacencyAny(i, o, True, 1)
@@ -59,45 +81,39 @@ class ToyExamples:
 
     def example_meta_tiles_fit_area():
         terminals = {
-            0: Terminal(
-                BB.from_whd(2, 1, 3), Colour(0.3, 0.6, 0.6, 1)
-            ),  # 2x3; turquoise ish
-            1: Terminal(
-                BB.from_whd(4, 1, 2), Colour(0.8, 0.3, 0, 1)
-            ),  # 4x2; orange ish
-            2: Terminal(
-                BB.from_whd(3, 1, 1), Colour(0.2, 0.1, 0.8, 1)
-            ),  # 3x1; blue-purple ish
-            3: Terminal(BB.from_whd(2, 2, 2), Colour(0.8, 0.1, 0.2, 1)),  # 2x2; red ish
-            -1: Void(BB.from_whd(1, 1, 1), colour=Colour(1, 1, 1, 0.5)),
+            0: Terminal((2, 1, 3), Colour(0.3, 0.6, 0.6, 1)),  # 2x3; turquoise ish
+            1: Terminal((4, 1, 2), Colour(0.8, 0.3, 0, 1)),  # 4x2; orange ish
+            2: Terminal((3, 1, 1), Colour(0.2, 0.1, 0.8, 1)),  # 3x1; blue-purple ish
+            3: Terminal((2, 2, 2), Colour(0.8, 0.1, 0.2, 1)),  # 2x2; red ish
+            -1: Void((1, 1, 1), colour=Colour(1, 1, 1, 0.5)),
         }
 
-        adjacencies = {
-            Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(2, {R(0, 1), R(1, 1), R(2, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(2, {R(0, 1), R(1, 1), R(2, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(2, {R(0, 1), R(1, 1), R(2, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(2, {R(0, 1), R(1, 1), R(2, 1)}, Offset(*C.WEST.value), True),
+        adjacencies = [
+            Adjacency(0, [R(0, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.EAST.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.WEST.value), True),
+            Adjacency(2, [R(0, 1), R(1, 1), R(2, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(2, [R(0, 1), R(1, 1), R(2, 1)], Offset(*C.EAST.value), True),
+            Adjacency(2, [R(0, 1), R(1, 1), R(2, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(2, [R(0, 1), R(1, 1), R(2, 1)], Offset(*C.WEST.value), True),
             Adjacency(
-                3, {R(0, 1), R(1, 1), R(2, 1), R(3, 1)}, Offset(*C.NORTH.value), True
+                3, [R(0, 1), R(1, 1), R(2, 1), R(3, 1)], Offset(*C.NORTH.value), True
             ),
             Adjacency(
-                3, {R(0, 1), R(1, 1), R(2, 1), R(3, 1)}, Offset(*C.EAST.value), True
+                3, [R(0, 1), R(1, 1), R(2, 1), R(3, 1)], Offset(*C.EAST.value), True
             ),
             Adjacency(
-                3, {R(0, 1), R(1, 1), R(2, 1), R(3, 1)}, Offset(*C.SOUTH.value), True
+                3, [R(0, 1), R(1, 1), R(2, 1), R(3, 1)], Offset(*C.SOUTH.value), True
             ),
             Adjacency(
-                3, {R(0, 1), R(1, 1), R(2, 1), R(3, 1)}, Offset(*C.WEST.value), True
+                3, [R(0, 1), R(1, 1), R(2, 1), R(3, 1)], Offset(*C.WEST.value), True
             ),
-        }
+        ]
 
         top_bottom_any = {
             AdjacencyAny(i, o, True, 1)
@@ -115,29 +131,25 @@ class ToyExamples:
 
     def example_meta_tiles_fit_area_simple():
         terminals = {
-            0: Terminal(
-                BB.from_whd(2, 2, 1), Colour(0.3, 0.6, 0.6, 1)
-            ),  # 2x3; turquoise ish
-            1: Terminal(
-                BB.from_whd(3, 1, 2), Colour(0.8, 0.3, 0, 1)
-            ),  # 4x2; orange ish
-            -1: Void(BB.from_whd(1, 1, 1), colour=Colour(1, 1, 1, 0.5)),
+            0: Terminal((2, 2, 1), Colour(0.3, 0.6, 0.6, 1)),  # 2x3; turquoise ish
+            1: Terminal((3, 1, 2), Colour(0.8, 0.3, 0, 1)),  # 4x2; orange ish
+            -1: Void((1, 1, 1), colour=Colour(1, 1, 1, 0.5)),
         }
 
-        adjacencies = {
-            Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.BOTTOM.value), True),
-            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(1, {R(0, 1), R(1, 1)}, Offset(*C.BOTTOM.value), True),
-        }
+        adjacencies = [
+            Adjacency(0, [R(0, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.EAST.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.TOP.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.BOTTOM.value), True),
+            Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.TOP.value), True),
+            Adjacency(1, [R(0, 1), R(1, 1)], Offset(*C.BOTTOM.value), True),
+        ]
 
         top_bottom_any = {
             AdjacencyAny(i, o, True, 1)
@@ -155,35 +167,31 @@ class ToyExamples:
 
     def example_meta_tiles_zebra_horizontal():
         terminals = {
-            0: Terminal(
-                BB.from_whd(3, 1, 1), Colour(0.3, 0.6, 0.6, 1)
-            ),  # 2x3; turquoise ish
-            1: Terminal(
-                BB.from_whd(3, 1, 1), Colour(0.8, 0.3, 0, 1)
-            ),  # 4x2; orange ish
-            # 2: Terminal(BB.from_whd(3,1,1),  Colour(0.2,0.1,0.8,1)), # 3x1; blue-purple ish
-            # 3: Terminal(BB.from_whd(2,2,2),  Colour(0.8,0.1,0.2,1)), # 3x1; red ish
-            # -1: Void(BB.from_whd(1,1,1)),
+            0: Terminal((3, 1, 1), Colour(0.3, 0.6, 0.6, 1)),  # 2x3; turquoise ish
+            1: Terminal((3, 1, 1), Colour(0.8, 0.3, 0, 1)),  # 4x2; orange ish
+            # 2: Terminal((3,1,1),  Colour(0.2,0.1,0.8,1)), # 3x1; blue-purple ish
+            # 3: Terminal((2,2,2),  Colour(0.8,0.1,0.2,1)), # 3x1; red ish
+            # -1: Void((1,1,1)),
         }
 
-        adjacencies = {
+        adjacencies = [
             Adjacency(0, {}, Offset(*C.NORTH.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.EAST.value), True),
             Adjacency(0, {}, Offset(*C.SOUTH.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
-            # Adjacency(2, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            # Adjacency(2, {R(2, 1)}, Offset(*C.EAST.value), True),
-            # Adjacency(2, {R(1, 1)}, Offset(*C.SOUTH.value), True),
-            # Adjacency(2, {R(2, 1)}, Offset(*C.WEST.value), True),
-            # Adjacency(3, {R(0, 1), R(1, 1), R(2, 1), R(3, 1)}, Offset(*C.NORTH.value), True),
-            # Adjacency(3, {R(0, 1), R(1, 1), R(2, 1), R(3, 1)}, Offset(*C.EAST.value), True),
-            # Adjacency(3, {R(0, 1), R(1, 1), R(2, 1), R(3, 1)}, Offset(*C.SOUTH.value), True),
-            # Adjacency(3, {R(0, 1), R(1, 1), R(2, 1), R(3, 1)}, Offset(*C.WEST.value), True),
-        }
+            Adjacency(0, [R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.WEST.value), True),
+            # Adjacency(2, [R(1, 1)], Offset(*C.NORTH.value), True),
+            # Adjacency(2, [R(2, 1)], Offset(*C.EAST.value), True),
+            # Adjacency(2, [R(1, 1)], Offset(*C.SOUTH.value), True),
+            # Adjacency(2, [R(2, 1)], Offset(*C.WEST.value), True),
+            # Adjacency(3, [R(0, 1), R(1, 1), R(2, 1), R(3, 1)], Offset(*C.NORTH.value), True),
+            # Adjacency(3, [R(0, 1), R(1, 1), R(2, 1), R(3, 1)], Offset(*C.EAST.value), True),
+            # Adjacency(3, [R(0, 1), R(1, 1), R(2, 1), R(3, 1)], Offset(*C.SOUTH.value), True),
+            # Adjacency(3, [R(0, 1), R(1, 1), R(2, 1), R(3, 1)], Offset(*C.WEST.value), True),
+        ]
 
         top_bottom_any = {
             AdjacencyAny(t, o, True, 1)
@@ -195,27 +203,25 @@ class ToyExamples:
 
     def example_meta_tiles():
         terminals = {
-            0: Terminal(
-                BB.from_whd(2, 1, 3), Colour(0.3, 0.6, 0.6, 1)
-            ),  # 2x3; cyan ish
-            1: Terminal(BB.from_whd(4, 1, 2), Colour(0.8, 0.3, 0, 1)),  # 4x2; orangeish
-            2: Void(BB.from_whd(1, 1, 1)),
+            0: Terminal((2, 1, 3), Colour(0.3, 0.6, 0.6, 1)),  # 2x3; cyan ish
+            1: Terminal((4, 1, 2), Colour(0.8, 0.3, 0, 1)),  # 4x2; orangeish
+            2: Void((1, 1, 1)),
         }
 
-        adjacencies = {
-            Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
-        }
+        adjacencies = [
+            Adjacency(0, [R(0, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.EAST.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.WEST.value), True),
+        ]
 
         top_bottom_any = {
             AdjacencyAny(i, o, True, 1)
@@ -237,48 +243,48 @@ class ToyExamples:
             # |/     |/
             # 0------1
             0: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 SD(north=SP.OPEN, east=SP.OPEN),
                 Colour(0.5, 0, 0, 1),
             ),  # red; corner_04
             1: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 SD(north=SP.OPEN, west=SP.OPEN),
                 Colour(0, 0.5, 0, 1),
             ),  # green; corner_15
             2: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 SD(south=SP.OPEN, west=SP.OPEN),
                 Colour(0, 0, 0.5, 1),
             ),  # blue; corner_26
             3: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 SD(south=SP.OPEN, east=SP.OPEN),
                 Colour(0, 0.5, 0.5, 1),
             ),  # cyan; corner_37
             4: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 SD(north=SP.OPEN, east=SP.OPEN, west=SP.OPEN),
                 Colour(0.5, 0, 0.5, 1),
             ),  # magenta; face_0154
             5: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 SD(south=SP.OPEN, east=SP.OPEN, west=SP.OPEN),
                 Colour(0.5, 0.5, 0, 1),
             ),  # yellow; face_3267
             6: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 SD(north=SP.OPEN, south=SP.OPEN, east=SP.OPEN),
                 Colour(0, 0, 0, 1),
             ),  # black; face_0374
             7: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 SD(north=SP.OPEN, south=SP.OPEN, west=SP.OPEN),
                 Colour(0.5, 0.5, 0.5, 1),
             ),  # white; face_1265
         }
 
-        adjs = {
+        adjacencies = [
             Adjacency(0, {}, Offset(*C.NORTH.value), True),
             Adjacency(0, {}, Offset(*C.EAST.value), True),
             Adjacency(0, {}, Offset(*C.SOUTH.value), True),
@@ -286,24 +292,24 @@ class ToyExamples:
             Adjacency(1, {}, Offset(*C.NORTH.value), True),
             Adjacency(1, {}, Offset(*C.EAST.value), True),
             Adjacency(1, {}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.WEST.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.WEST.value), True),
             Adjacency(2, {}, Offset(*C.NORTH.value), True),
-            Adjacency(2, {R(0, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(2, {R(1, 1)}, Offset(*C.SOUTH.value), True),
+            Adjacency(2, [R(0, 1)], Offset(*C.EAST.value), True),
+            Adjacency(2, [R(1, 1)], Offset(*C.SOUTH.value), True),
             Adjacency(2, {}, Offset(*C.WEST.value), True),
             Adjacency(3, {}, Offset(*C.NORTH.value), True),
-            Adjacency(3, {R(2, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(3, {R(0, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(3, {R(2, 1)}, Offset(*C.WEST.value), True),
+            Adjacency(3, [R(2, 1)], Offset(*C.EAST.value), True),
+            Adjacency(3, [R(0, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(3, [R(2, 1)], Offset(*C.WEST.value), True),
             Adjacency(4, {}, Offset(*C.NORTH.value), True),
-            Adjacency(4, {R(4, 1), R(1, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(4, {R(2, 1), R(3, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(4, {R(4, 1), R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(5, {R(4, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(5, {R(5, 1), R(2, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(5, {R(4, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(5, {R(5, 1), R(3, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(6, {R(6, 1), R(3, 1)}, Offset(*C.NORTH.value), True),
+            Adjacency(4, [R(4, 1), R(1, 1)], Offset(*C.EAST.value), True),
+            Adjacency(4, [R(2, 1), R(3, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(4, [R(4, 1), R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(5, [R(4, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(5, [R(5, 1), R(2, 1)], Offset(*C.EAST.value), True),
+            Adjacency(5, [R(4, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(5, [R(5, 1), R(3, 1)], Offset(*C.WEST.value), True),
+            Adjacency(6, [R(6, 1), R(3, 1)], Offset(*C.NORTH.value), True),
             Adjacency(6, {}, Offset(*C.EAST.value), True),
             Adjacency(
                 6,
@@ -314,9 +320,9 @@ class ToyExamples:
                 Offset(*C.SOUTH.value),
                 True,
             ),
-            Adjacency(6, {R(1, 1), R(2, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(7, {R(7, 1), R(2, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(7, {R(6, 1), R(0, 1), R(3, 1)}, Offset(*C.EAST.value), True),
+            Adjacency(6, [R(1, 1), R(2, 1)], Offset(*C.WEST.value), True),
+            Adjacency(7, [R(7, 1), R(2, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(7, [R(6, 1), R(0, 1), R(3, 1)], Offset(*C.EAST.value), True),
             Adjacency(
                 7,
                 {
@@ -326,8 +332,8 @@ class ToyExamples:
                 Offset(*C.SOUTH.value),
                 True,
             ),
-            Adjacency(7, {R(6, 1)}, Offset(*C.WEST.value), True),
-        }
+            Adjacency(7, [R(6, 1)], Offset(*C.WEST.value), True),
+        ]
 
         top_bottom_any = {
             AdjacencyAny(i, o, True)
@@ -335,102 +341,102 @@ class ToyExamples:
             for o in [Offset(*C.TOP.value), Offset(*C.BOTTOM.value)]
         }
 
-        return terminals, adjs.union(top_bottom_any), None
+        return terminals, adjacencies.union(top_bottom_any), None
 
     def example_zebra_horizontal():
         terminals = {
-            0: Terminal(BB.from_whd(1, 1, 1), Colour(1, 1, 1, 1)),  # white
-            1: Terminal(BB.from_whd(1, 1, 1), Colour(0, 0, 0, 1)),  # black
+            0: Terminal((1, 1, 1), Colour(1, 1, 1, 1)),  # white
+            1: Terminal((1, 1, 1), Colour(0, 0, 0, 1)),  # black
         }
 
-        adjs = {
-            Adjacency(0, {R(0, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.NORTH.value), False),
-            Adjacency(0, {R(1, 1)}, Offset(*C.NORTH.value), False),
-        }
+        adjacencies = [
+            Adjacency(0, [R(0, 1)], Offset(*C.TOP.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.TOP.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.NORTH.value), False),
+            Adjacency(0, [R(1, 1)], Offset(*C.NORTH.value), False),
+        ]
 
-        return terminals, adjs
+        return terminals, adjacencies
 
     def example_zebra_horizontal_3():
         terminals = {
-            0: Terminal(BB.from_whd(1, 1, 1), Colour(1, 1, 1, 1)),  # white
-            1: Terminal(BB.from_whd(1, 1, 1), Colour(0, 0, 0, 1)),  # black
-            2: Terminal(BB.from_whd(1, 1, 1), Colour(1, 1, 0, 1)),  # yellow
+            0: Terminal((1, 1, 1), Colour(1, 1, 1, 1)),  # white
+            1: Terminal((1, 1, 1), Colour(0, 0, 0, 1)),  # black
+            2: Terminal((1, 1, 1), Colour(1, 1, 0, 1)),  # yellow
         }
 
-        adjs = {
-            Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(2, {R(2, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(2, {R(2, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(2, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(0, {R(1, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(2, {R(0, 1)}, Offset(*C.TOP.value), True),
-        }
+        adjacencies = [
+            Adjacency(0, [R(0, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.WEST.value), True),
+            Adjacency(2, [R(2, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(2, [R(2, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(2, 1)], Offset(*C.TOP.value), True),
+            Adjacency(0, [R(1, 1)], Offset(*C.TOP.value), True),
+            Adjacency(2, [R(0, 1)], Offset(*C.TOP.value), True),
+        ]
 
-        return terminals, adjs, None
+        return terminals, adjacencies, None
 
     def example_zebra_vertical_3():
         terminals = {
-            0: Terminal(BB.from_whd(1, 1, 1), Colour(1, 1, 1, 1)),  # white
-            1: Terminal(BB.from_whd(1, 1, 1), Colour(0, 0, 0, 1)),  # black
-            2: Terminal(BB.from_whd(1, 1, 1), Colour(1, 1, 0, 1)),  # yellow
+            0: Terminal((1, 1, 1), Colour(1, 1, 1, 1)),  # white
+            1: Terminal((1, 1, 1), Colour(0, 0, 0, 1)),  # black
+            2: Terminal((1, 1, 1), Colour(1, 1, 0, 1)),  # yellow
         }
 
-        adjs = {
-            Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            # Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            # Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(2, {R(2, 1)}, Offset(*C.NORTH.value), True),
-            # Adjacency(2, {R(2, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(2, 1)}, Offset(*C.WEST.value), False),
-            Adjacency(0, {R(1, 1)}, Offset(*C.WEST.value), False),
-            Adjacency(2, {R(0, 1)}, Offset(*C.WEST.value), False),
-        }
+        adjacencies = [
+            Adjacency(0, [R(0, 1)], Offset(*C.NORTH.value), True),
+            # Adjacency(0, [R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.NORTH.value), True),
+            # Adjacency(1, [R(1, 1)], Offset(*C.WEST.value), True),
+            Adjacency(2, [R(2, 1)], Offset(*C.NORTH.value), True),
+            # Adjacency(2, [R(2, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(2, 1)], Offset(*C.WEST.value), False),
+            Adjacency(0, [R(1, 1)], Offset(*C.WEST.value), False),
+            Adjacency(2, [R(0, 1)], Offset(*C.WEST.value), False),
+        ]
 
-        return terminals, adjs, None
+        return terminals, adjacencies, None
 
     def example_zebra_vertical():
         terminals = {
-            0: Terminal(BB.from_whd(1, 1, 1), Colour(0.7, 0.7, 0.7, 1)),  # white
+            0: Terminal((1, 1, 1), Colour(0.7, 0.7, 0.7, 1)),  # white
             1: Terminal(
-                BB.from_whd(1, 1, 1),
+                (1, 1, 1),
                 Colour(0.05, 0.05, 0.05, 1),
             ),  # black
         }
 
-        adjs = {
-            Adjacency(0, {R(0, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(0, {R(1, 1)}, Offset(*C.WEST.value), True),
-        }
+        adjacencies = [
+            Adjacency(0, [R(0, 1)], Offset(*C.TOP.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.TOP.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(0, [R(1, 1)], Offset(*C.WEST.value), True),
+        ]
 
-        return terminals, adjs, None
+        return terminals, adjacencies, None
 
     def example_slanted():
         terminals = {
-            0: Terminal(BB.from_whd(1, 1, 1), Colour(0.8, 0, 0, 1)),
-            1: Void(BB.from_whd(1, 1, 1)),
+            0: Terminal((1, 1, 1), Colour(0.8, 0, 0, 1)),
+            1: Void((1, 1, 1)),
         }
 
-        adjs = {
-            Adjacency(0, {R(0, 0.8), R(1, 0.2)}, Offset(*C.WEST.value), True),
-            Adjacency(0, {R(0, 0.2), R(1, 0.8)}, Offset(*C.TOP.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
-        }
-        return terminals, adjs, None
+        adjacencies = [
+            Adjacency(0, [R(0, 0.8), R(1, 0.2)], Offset(*C.WEST.value), True),
+            Adjacency(0, [R(0, 0.2), R(1, 0.8)], Offset(*C.TOP.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.TOP.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.EAST.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.NORTH.value), True),
+        ]
+        return terminals, adjacencies, None
 
     def example_two_tiles():
         x, y, z = 2, 1, 2
@@ -439,31 +445,31 @@ class ToyExamples:
 
         terminals = {
             0: Terminal(
-                BB.from_whd(x, y, z),
+                Coord(x, y, z),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask0,
             ),
-            1: Terminal(BB.from_whd(x, y, z), Colour(0.8, 0.3, 0, 1), mask=mask0),
+            1: Terminal(Coord(x, y, z), Colour(0.8, 0.3, 0, 1), mask=mask0),
         }
 
-        adjacencies = {
-            Adjacency(1, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.WEST.value), True),
-            # Adjacency(0, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            # Adjacency(0, {R(1, 1)}, Offset(*C.EAST.value), True),
-            # Adjacency(0, {R(1, 1)}, Offset(*C.SOUTH.value), True),
-            # Adjacency(0, {R(1, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
-            # Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
-            # Adjacency(1, {R(1, 1)}, Offset(*C.BOTTOM.value), True),
-            # Adjacency(0, {R(0, 1)}, Offset(*C.TOP.value), True),
-            # Adjacency(0, {R(0, 1)}, Offset(*C.BOTTOM.value), True),
-        }
+        adjacencies = [
+            Adjacency(1, [R(0, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.WEST.value), True),
+            # Adjacency(0, [R(1, 1)], Offset(*C.NORTH.value), True),
+            # Adjacency(0, [R(1, 1)], Offset(*C.EAST.value), True),
+            # Adjacency(0, [R(1, 1)], Offset(*C.SOUTH.value), True),
+            # Adjacency(0, [R(1, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.WEST.value), True),
+            # Adjacency(1, [R(1, 1)], Offset(*C.TOP.value), True),
+            # Adjacency(1, [R(1, 1)], Offset(*C.BOTTOM.value), True),
+            # Adjacency(0, [R(0, 1)], Offset(*C.TOP.value), True),
+            # Adjacency(0, [R(0, 1)], Offset(*C.BOTTOM.value), True),
+        ]
 
         return terminals, adjacencies, None
 
@@ -477,38 +483,38 @@ class ToyExamples:
 
         terminals = {
             0: Terminal(
-                BB.from_whd(x0, y0, z0),
+                Coord(x0, y0, z0),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask0,
             ),
             1: Terminal(
-                BB.from_whd(x1, y1, z1),
+                Coord(x1, y1, z1),
                 Colour(0.8, 0.3, 0, 1),
                 mask=mask1,
             ),
         }
 
-        adjacencies = {
+        adjacencies = [
             # 1 - 1
-            Adjacency(1, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(0, {R(1, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(0, {R(1, 1)}, Offset(*C.BOTTOM.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(0, [R(1, 1)], Offset(*C.TOP.value), True),
+            Adjacency(0, [R(1, 1)], Offset(*C.BOTTOM.value), True),
             # 0 - 0
-            Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.BOTTOM.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.EAST.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.TOP.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.BOTTOM.value), True),
             # 1 - 1
-            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.BOTTOM.value), True),
-        }
+            Adjacency(1, [R(1, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.TOP.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.BOTTOM.value), True),
+        ]
 
         return terminals, adjacencies, None
 
@@ -524,74 +530,74 @@ class ToyExamples:
         mask1[1, 1, 0] = False  # Create a small L shape
 
         x2, y2, z2 = 1, 1, 1
-        mask2 = np.full((x2, y2, z2), True)
+        mask2 = np.full(Coord(x2, y2, z2), True)
 
         terminals = {
             0: Terminal(
-                BB.from_whd(x0, y0, z0),
+                Coord(x0, y0, z0),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask0,
             ),
             1: Terminal(
-                BB.from_whd(x1, y1, z1),
+                Coord(x1, y1, z1),
                 Colour(0.8, 0.3, 0, 1),
                 mask=mask1,
             ),
-            2: Terminal(BB.from_whd(x2, y2, z2), Colour(1, 1, 1, 0.5), mask=mask2),
+            2: Terminal(Coord(x2, y2, z2), Colour(1, 1, 1, 0.5), mask=mask2),
         }
 
         fallback_weight = 0.000001
-        adjacencies = {
+        adjacencies = [
             # 1 - 0
-            Adjacency(1, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.BOTTOM.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.TOP.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.BOTTOM.value), True),
             # 1 - 1
-            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.BOTTOM.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.TOP.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.BOTTOM.value), True),
             # 2 - All
             Adjacency(
                 2,
-                {R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)},
+                [R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)],
                 Offset(*C.NORTH.value),
                 True,
             ),
             Adjacency(
                 2,
-                {R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)},
+                [R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)],
                 Offset(*C.EAST.value),
                 True,
             ),
             Adjacency(
                 2,
-                {R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)},
+                [R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)],
                 Offset(*C.SOUTH.value),
                 True,
             ),
             Adjacency(
                 2,
-                {R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)},
+                [R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)],
                 Offset(*C.WEST.value),
                 True,
             ),
             Adjacency(
                 2,
-                {R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)},
+                [R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)],
                 Offset(*C.TOP.value),
                 True,
             ),
             Adjacency(
                 2,
-                {R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)},
+                [R(0, fallback_weight), R(1, fallback_weight), R(2, fallback_weight)],
                 Offset(*C.BOTTOM.value),
                 True,
             ),
-        }
+        ]
 
         return (
             terminals,
@@ -604,36 +610,36 @@ class ToyExamples:
         x1, y1, z1 = 2, 1, 2
         terminals = {
             0: Terminal(
-                BB.from_whd(x0, y0, z0),
+                Coord(x0, y0, z0),
                 Colour(0.3, 0.6, 0.6, 1),
                 distinct_orientations=[0, 1],
             ),
             1: Terminal(
-                BB.from_whd(x1, y1, z1),
+                Coord(x1, y1, z1),
                 Colour(0.8, 0.3, 0, 1),
             ),
         }
-        adjacencies = {
+        adjacencies = [
             # 0 - 0
-            Adjacency(0, {R(0, 1, [0, 1])}, Offset(*C.NORTH.value), True),
-            Adjacency(0, {R(0, 1, [0, 1])}, Offset(*C.EAST.value), True),
-            Adjacency(0, {R(0, 1, [0, 1])}, Offset(*C.SOUTH.value), True),
-            Adjacency(0, {R(0, 1, [0, 1])}, Offset(*C.WEST.value), True),
-            Adjacency(0, {R(0, 1, [0, 1])}, Offset(*C.TOP.value), True),
-            Adjacency(0, {R(0, 1, [0, 1])}, Offset(*C.BOTTOM.value), True),
+            Adjacency(0, [R(0, 1, [0, 1])], Offset(*C.NORTH.value), True),
+            Adjacency(0, [R(0, 1, [0, 1])], Offset(*C.EAST.value), True),
+            Adjacency(0, [R(0, 1, [0, 1])], Offset(*C.SOUTH.value), True),
+            Adjacency(0, [R(0, 1, [0, 1])], Offset(*C.WEST.value), True),
+            Adjacency(0, [R(0, 1, [0, 1])], Offset(*C.TOP.value), True),
+            Adjacency(0, [R(0, 1, [0, 1])], Offset(*C.BOTTOM.value), True),
             # 0 - 1
-            Adjacency(0, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(0, {R(1, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(0, {R(1, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(0, {R(1, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(0, {R(1, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(0, {R(1, 1)}, Offset(*C.BOTTOM.value), True),
+            Adjacency(0, [R(1, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(0, [R(1, 1)], Offset(*C.EAST.value), True),
+            Adjacency(0, [R(1, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(0, [R(1, 1)], Offset(*C.WEST.value), True),
+            Adjacency(0, [R(1, 1)], Offset(*C.TOP.value), True),
+            Adjacency(0, [R(1, 1)], Offset(*C.BOTTOM.value), True),
             # 1 - 1
-            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.BOTTOM.value), True),
-        }
+            Adjacency(1, [R(1, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.TOP.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.BOTTOM.value), True),
+        ]
         return terminals, adjacencies, None
 
     def example_two_tiles2():
@@ -644,31 +650,31 @@ class ToyExamples:
 
         terminals = {
             0: Terminal(
-                BB.from_whd(x, y, z),
+                Coord(x, y, z),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask0,
             ),
-            1: Terminal(BB.from_whd(x, y, z), Colour(0.8, 0.3, 0, 1), mask=mask1),
+            1: Terminal(Coord(x, y, z), Colour(0.8, 0.3, 0, 1), mask=mask1),
         }
 
-        adjacencies = {
-            Adjacency(1, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.WEST.value), True),
-            # Adjacency(0, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            # Adjacency(0, {R(1, 1)}, Offset(*C.EAST.value), True),
-            # Adjacency(0, {R(1, 1)}, Offset(*C.SOUTH.value), True),
-            # Adjacency(0, {R(1, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
-            # Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
-            # Adjacency(1, {R(1, 1)}, Offset(*C.BOTTOM.value), True),
-            # Adjacency(0, {R(0, 1)}, Offset(*C.TOP.value), True),
-            # Adjacency(0, {R(0, 1)}, Offset(*C.BOTTOM.value), True),
-        }
+        adjacencies = [
+            Adjacency(1, [R(0, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.WEST.value), True),
+            # Adjacency(0, [R(1, 1)], Offset(*C.NORTH.value), True),
+            # Adjacency(0, [R(1, 1)], Offset(*C.EAST.value), True),
+            # Adjacency(0, [R(1, 1)], Offset(*C.SOUTH.value), True),
+            # Adjacency(0, [R(1, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.WEST.value), True),
+            # Adjacency(1, [R(1, 1)], Offset(*C.TOP.value), True),
+            # Adjacency(1, [R(1, 1)], Offset(*C.BOTTOM.value), True),
+            # Adjacency(0, [R(0, 1)], Offset(*C.TOP.value), True),
+            # Adjacency(0, [R(0, 1)], Offset(*C.BOTTOM.value), True),
+        ]
 
         return terminals, adjacencies, None
 
@@ -677,32 +683,32 @@ class ToyExamples:
         mask412 = np.full((y, x, z), True)
         terminals = {
             0: Terminal(
-                BB.from_whd(x, y, z),
+                Coord(x, y, z),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask412,
             ),  # 4x2; cyan ish
             1: Terminal(
-                BB.from_whd(x, y, z),
+                Coord(x, y, z),
                 Colour(0.8, 0.3, 0, 1),
                 mask=mask412,
             ),  # 4x2; orangeish
-            2: Void(BB.from_whd(1, 1, 1), Colour(1, 1, 1, 0.5)),
+            2: Void((1, 1, 1), Colour(1, 1, 1, 0.5)),
         }
 
-        adjacencies = {
-            # Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            # Adjacency(0, {R(0, 1)}, Offset(*C.EAST.value), True),
-            # Adjacency(0, {R(0, 1)}, Offset(*C.SOUTH.value), True),
-            # Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
-        }
+        adjacencies = [
+            # Adjacency(0, [R(0, 1)], Offset(*C.NORTH.value), True),
+            # Adjacency(0, [R(0, 1)], Offset(*C.EAST.value), True),
+            # Adjacency(0, [R(0, 1)], Offset(*C.SOUTH.value), True),
+            # Adjacency(0, [R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.WEST.value), True),
+        ]
 
         top_bottom_any = {
             AdjacencyAny(i, o, True, 1)
@@ -726,38 +732,38 @@ class ToyExamples:
         mask1 = np.full((y1, x1, z1), True)
         terminals = {
             0: Terminal(
-                BB.from_whd(x0, y0, z0),
+                Coord(x0, y0, z0),
                 Colour(0.3, 0.6, 0.6, 1),
                 mask=mask0,
             ),  # cyan ish
             1: Terminal(
-                BB.from_whd(x1, y1, z1),
+                Coord(x1, y1, z1),
                 Colour(0.8, 0.3, 0, 1),
                 mask=mask1,
             ),  # orangeish
-            2: Void(BB.from_whd(1, 1, 1), Colour(1, 1, 1, 0.5)),
+            2: Void((1, 1, 1), Colour(1, 1, 1, 0.5)),
         }
 
-        adjacencies = {
-            Adjacency(0, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(0, {R(0, 1)}, Offset(*C.BOTTOM.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.NORTH.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
-            Adjacency(1, {R(1, 1)}, Offset(*C.SOUTH.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.WEST.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.TOP.value), True),
-            Adjacency(1, {R(0, 1)}, Offset(*C.BOTTOM.value), True),
-            # Adjacency(1, {R(1, 1)}, Offset(*C.TOP.value), True),
-            # Adjacency(1, {R(1, 1)}, Offset(*C.BOTTOM.value), True),
-            # Adjacency(1, {R(1, 1)}, Offset(*C.NORTH.value), True),
-            # Adjacency(1, {R(1, 1)}, Offset(*C.EAST.value), True),
-            # Adjacency(1, {R(1, 1)}, Offset(*C.SOUTH.value), True),
-            # Adjacency(1, {R(1, 1)}, Offset(*C.WEST.value), True),
-        }
+        adjacencies = [
+            Adjacency(0, [R(0, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.EAST.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.TOP.value), True),
+            Adjacency(0, [R(0, 1)], Offset(*C.BOTTOM.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.NORTH.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.EAST.value), True),
+            Adjacency(1, [R(1, 1)], Offset(*C.SOUTH.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.WEST.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.TOP.value), True),
+            Adjacency(1, [R(0, 1)], Offset(*C.BOTTOM.value), True),
+            # Adjacency(1, [R(1, 1)], Offset(*C.TOP.value), True),
+            # Adjacency(1, [R(1, 1)], Offset(*C.BOTTOM.value), True),
+            # Adjacency(1, [R(1, 1)], Offset(*C.NORTH.value), True),
+            # Adjacency(1, [R(1, 1)], Offset(*C.EAST.value), True),
+            # Adjacency(1, [R(1, 1)], Offset(*C.SOUTH.value), True),
+            # Adjacency(1, [R(1, 1)], Offset(*C.WEST.value), True),
+        ]
 
         # top_bottom_any = {
         #     AdjacencyAny(i, o, True, 1)

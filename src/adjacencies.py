@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 import numpy as np
 from offsets import OffsetFactory, Offset
 from bidict import bidict
@@ -11,27 +11,39 @@ from communicator import Communicator
 comm = Communicator()
 
 
+@dataclass
 class Relation:
-    def __init__(self, other: int, weight: float, rotations: list[int] = [0]) -> None:
-        self.other = other
-        self.weight = weight
-        self.rotations = rotations
+    other: int
+    weight: float
+    rotations: list[int] = field(default_factory=lambda: [0])
+
+    def to_json(self):
+        return asdict(self)
 
 
+@dataclass
 class Adjacency:
-    def __init__(
-        self,
-        source: int,
-        allowed_neighbours: set[Relation],
-        offset: Offset,
-        symmetric: bool,
-        properties: list[Properties] = [],
-    ) -> None:
-        self.source = source
-        self.allowed_neighbours = allowed_neighbours
-        self.offset = offset
-        self.symmetric = symmetric
-        self.properties = properties
+    source: int
+    allowed_neighbours: list[Relation]
+    offset: Offset
+    symmetric: bool = field(default=True)
+    properties: list[Properties] = field(default_factory=lambda: [])
+
+    def __post_init__(self):
+        if isinstance(self.allowed_neighbours, set):
+            self.allowed_neighbours = list(self.allowed_neighbours)
+        self.allowed_neighbours = [
+            Relation(**a) if isinstance(a, dict) else a for a in self.allowed_neighbours
+        ]
+
+    def to_json(self):
+        return {
+            "source": self.source,
+            "allowed_neighbours": [r.to_json() for r in self.allowed_neighbours],
+            "offset": self.offset,
+            "symmetric": self.symmetric,
+            "properties": self.properties,
+        }
 
 
 class AdjacencyAny(Adjacency):

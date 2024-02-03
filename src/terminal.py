@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 import numpy as np
 
 from atom import Atom
@@ -11,16 +11,15 @@ from util_data import Dimensions as D, Cardinals as C, Colour
 
 @dataclass
 class Terminal:
-    extent: BB  # BB with extent relative to grid units
+    extent: Coord  # BB with extent relative to grid units
     colour: Colour
-    up: C = field(default=C.TOP)
+    # up: C = field(default=C.TOP)
     # orientation: C = field(default=C.NORTH)
     mask: np.ndarray = field(default=None)
 
     # Specifies how the terminal may be oriented; default 0 means that the terminal may only point North.
     distinct_orientations: list[int] = field(default_factory=lambda: [0])
-    atom_indices: np.ndarray = field(init=False)
-    # atom_mask: np.ndarray = field(init=False)
+    description: str = field(default="")
     heightmaps: dict = field(init=False)
     n_atoms: int = field(init=False)
     atom_index_to_id_mapping: dict[Coord, Atom] = field(init=False)
@@ -36,13 +35,20 @@ class Terminal:
     def __post_init__(self):
         self.atom_index_to_id_mapping = {}
         if self.mask is None:
-            self.mask = np.full(
-                (self.extent.height(), self.extent.width(), self.extent.depth()), True
-            )
+            self.mask = np.full((self.extent.y, self.extent.x, self.extent.z), True)
 
         self.calc_oriented_masks()
 
         self.calc_heightmaps()
+
+    def to_json(self):
+        return {
+            "extent": self.extent,
+            "colour": self.colour,
+            "mask": self.mask.tolist(),
+            "distinct_orientations": self.distinct_orientations,
+            "description": self.description,
+        }
 
     def calc_atom_indices(self, mask: np.ndarray):
         # Find all cells in the mask that are not empty, these are the atoms uniquely identified by their index.
@@ -155,4 +161,4 @@ class Void(Terminal):
     def __init__(self, extent: BB, colour: Colour = None):
         self.extent = extent
         self.colour = colour
-        super().__init__(extent, None, None, colour, mask=np.full(extent.whd(), True))
+        super().__init__(extent, None, None, colour, mask=np.full(extent, True))

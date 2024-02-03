@@ -1,0 +1,59 @@
+{
+  "0": {
+    "extent": [
+      2,
+      1,
+      1
+    ],
+    "colour": [
+      0.3,
+      0.6,
+      0.6,
+      1
+    ],
+    "mask": [
+      [
+        [
+          true
+        ],
+        [
+          true
+        ]
+      ]
+    ],
+    "distinct_orientations": [
+      0,
+      1
+    ],
+    "description": ""
+  },
+  "1": {
+    "extent": [
+      2,
+      1,
+      2
+    ],
+    "colour": [
+      0.8,
+      0.3,
+      0,
+      1
+    ],
+    "mask": [
+      [
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ]
+      ]
+    ],
+    "distinct_orientations": [
+      0
+    ],
+    "description": ""
+  }
+}

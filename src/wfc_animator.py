@@ -187,14 +187,15 @@ class WFCAnimator(Animator):
 
     def toggle_hover(self):
         self.hover_mode = not self.hover_mode
+        comm.communicate(f"Turned hover mode {'On' if self.hover_mode else 'Off'}")
 
     def toggle_communicator(self):
         if comm.is_silent():
             comm.restore()
             comm.communicate("Turned communicator On")
         else:
-            comm.communicate("Silenced communicator")
             comm.silence()
+            comm.communicate("Turned communicator Off")
 
     def enable_collapse_repeat(self, task):
         if self.collapse_repeat and not self.wfc.is_done():
