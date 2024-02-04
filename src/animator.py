@@ -1,8 +1,9 @@
-from panda3d.core import load_prc_file, NodePath, Material, PointLight
+from panda3d.core import load_prc_file, NodePath, Material, PointLight, WindowProperties
 from direct.showbase.ShowBase import ShowBase
 from coord import Coord
 from util_data import Colour
 from model import Part
+from tkinter import *
 
 
 class Animator(ShowBase):
@@ -12,11 +13,22 @@ class Animator(ShowBase):
         default_camera_pos=Coord(10, 10, 10),
         unit_dims: Coord = Coord(1, 1, 1),
     ):
-        ShowBase.__init__(self)
+        ShowBase.__init__(self, windowType="none")
+        self.start_tk()
+        self.frame: Misc = self.tkRoot
+        self.frame.geometry("800x600")
+
+        props = WindowProperties()
+        props.setParentWindow(self.frame.winfo_id())
+        props.setOrigin(0, 0)
+        props.setSize(800, 600)
+
+        self.make_default_pipe()
+        self.open_default_window(props=props)
         # Loading a config is required in order for the models in relative paths to be found.
         load_prc_file("./Config.prc")
 
-        self.disable_mouse()
+        # self.disable_mouse()
         self.mouse_enabled = False
         self.models: dict[int, NodePath] = {}
         self.lookat_point = lookat_point

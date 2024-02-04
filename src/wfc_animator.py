@@ -5,6 +5,7 @@ from grid import Grid
 from toy_examples import ToyExamples as Toy
 from wfc import WFC
 from direct.gui.DirectGui import *
+import tkinter as tk
 
 from panda3d.core import (
     NodePath,
@@ -44,9 +45,12 @@ class WFCAnimator(Animator):
         self.pending_models = 0
 
         self.window_width, self.window_height = 800, 800
-        props = WindowProperties()
-        props.setSize(self.window_width, self.window_height)
-        self.win.request_properties(props)
+        self.props = WindowProperties()
+        self.props.setParentWindow(self.frame.winfo_id())
+        self.props.setOrigin(0, 0)
+        self.props.setSize(self.window_width, self.window_height)
+        self.frame.geometry(f"{self.window_width}x{self.window_height}")
+        self.win.request_properties(self.props)
 
         self.aspect_ratio = self.get_aspect_ratio()
 
@@ -65,31 +69,24 @@ class WFCAnimator(Animator):
         self.init_axes()
         self.init_gui()
 
+        self.frame.mainloop()
+
+    def prt(self):
+        print("TESTING!")
+
+    def align_right(self, element_width, frame_width):
+        return frame_width * 0.5 - element_width
+
+    def align_bottom(self, element_height, frame_height):
+        return frame_height * 0.5 - element_height
+
     def init_gui(self):
-        self.start_screen = DirectFrame(
-            frameSize=(0, 0.2, 0, 0.2), pos=(-1, 1, -1), parent=self.aspect2d
-        )
-        self.start_screen2 = DirectFrame(
-            frameSize=(0, 0.2, 0, 0.3),
-            pos=(-(800 / 600.0), 1, -1),
-            parent=self.aspect2d,
-        )
-
-        # self.display_region = self.win.make_display_region()
-        # self.display_region.sort = 20
-        # self.dr_cam = NodePath(Camera("dr_cam"))
-        # lens = OrthographicLens()
-        # lens.set_film_size(2, 2)
-        # lens.set_near_far(-1000, 1000)
-        # self.dr_cam.node().set_lens(lens)
-
-        # self.dr_render2d = NodePath("dr_render2d")
-        # self.dr_render2d.set_depth_test(False)
-        # self.dr_render2d.set_depth_write(False)
-        # self.dr_cam.reparent_to(self.dr_render2d)
-        # self.display_region.set_camera(self.dr_cam)
-        print(self.win.get_x_size())
-        print(self.win.get_y_size())
+        self.menu_frame = tk.Frame(master=self.frame, width=200, height=600, bg="red")
+        label = tk.Label(master=self.menu_frame, text="SAMPLE TEXT")
+        button = tk.Button(master=self.menu_frame, bg="green", command=self.prt)
+        button.pack()
+        self.menu_frame.pack(anchor=tk.CENTER)
+        label.pack()
 
     def init_camera_params(self, grid_w, grid_h, grid_d, unit_dims):
         self.unit_dims = unit_dims
@@ -129,8 +126,13 @@ class WFCAnimator(Animator):
         self.task_mgr.add(self.window_listener, "window_listener")
 
     def window_listener(self, task):
-        if self.aspect_ratio != self.get_aspect_ratio():
-            self.aspect_ratio = self.get_aspect_ratio()
+        f_width, f_height = self.frame.winfo_width(), self.frame.winfo_height()
+        if f_width != self.window_width or f_height != self.window_height:
+            self.window_width, self.window_height = f_width, f_height
+            self.aspect_ratio = self.window_width * 1.0 / self.window_height
+
+            self.props.setSize(self.window_width, self.window_height)
+            self.win.request_properties(self.props)
             print("Ratio changed!", self.aspect_ratio)
 
         return task.cont
@@ -148,6 +150,7 @@ class WFCAnimator(Animator):
         self.accept("enter", self.full_throttle)
         self.accept("control-space", self.toggle_collapse_repeat)
         self.accept("m", self.toggle_communicator)
+        self.accept("escape", exit)
 
     def init_info_grid(self):
         self.create_grid()
