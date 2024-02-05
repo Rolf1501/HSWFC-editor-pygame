@@ -3,7 +3,6 @@ from os import makedirs
 from os.path import exists
 from pathlib import Path
 
-from dataclass_util import dict_to_dataclass_instance
 from terminal import Terminal
 from toy_examples import Example
 
@@ -50,10 +49,7 @@ class JSONParser:
         terminals = {}
         with open(self.terminal_path, "r") as file:
             t_json = json.load(file)
-            terminals = {
-                t: dict_to_dataclass_instance(Terminal, t_json[t])
-                for t in t_json.keys()
-            }
+            terminals = {int(t): Terminal.from_json(t_json[t]) for t in t_json.keys()}
 
         return terminals
 
@@ -61,9 +57,7 @@ class JSONParser:
         examples = {}
         with open(self.examples_path, "r") as file:
             e_json = json.load(file)
-            examples = {
-                e: dict_to_dataclass_instance(Example, e_json[e]) for e in e_json.keys()
-            }
+            examples = {e: Example.from_json(e_json[e]) for e in e_json.keys()}
         return examples
 
     def write_terminals(self, terminals: list[Terminal]):
