@@ -2,10 +2,11 @@ from animator import Animator
 from communicator import Communicator
 from coord import Coord
 from grid import Grid
-from toy_examples import ToyExamples as Toy
+from toy_examples import ToyExamples as Toy, Example
 from wfc import WFC
 from direct.gui.DirectGui import *
 import tkinter as tk
+from json_parser import JSONParser as J
 
 from panda3d.core import (
     NodePath,
@@ -30,19 +31,13 @@ comm = Communicator()
 
 
 class WFCAnimator(Animator):
-    def __init__(
-        self, wfc: WFC, grid_w=20, grid_h=20, grid_d=5, unit_dims=Coord(1, 1, 1)
-    ):
-        self.wfc = wfc
+    def __init__(self, grid_w=20, grid_h=20, grid_d=5, unit_dims=Coord(1, 1, 1)):
         self.init_camera_params(grid_w, grid_h, grid_d, unit_dims)
 
         # Keep reference from canvas to model.
         # self.canvas = Grid(grid_w, grid_h, grid_d, default_fill_value=-1)
         self.colours = Grid(grid_w, grid_h, grid_d, default_fill_value=Q())
         self.info_grid = Grid(grid_w, grid_h, grid_d, default_fill_value=None)
-
-        self.shown_model_index = 0
-        self.pending_models = 0
 
         self.window_width, self.window_height = 800, 800
         self.props = WindowProperties()
@@ -55,11 +50,18 @@ class WFCAnimator(Animator):
         self.aspect_ratio = self.get_aspect_ratio()
 
         self.manual()
+        self.reset_models()
 
         self.delta_acc = 0
         self.delta_collapse = 0
 
         self.hover_mode = False
+        self.examples = J().read_examples()
+        self.terminals = J().read_terminals()
+        self.active_example = next(iter(self.examples))
+        self.grid_extent = Coord(grid_w, grid_h, grid_d)
+
+        self.init_wfc()
 
         # self.init_info_grid()
         self.init_collider()
@@ -80,13 +82,90 @@ class WFCAnimator(Animator):
     def align_bottom(self, element_height, frame_height):
         return frame_height * 0.5 - element_height
 
+    def init_wfc(self):
+        example: Example = self.examples[self.active_example]
+        example_terminals = {t: self.terminals[t] for t in example.terminal_ids}
+        self.wfc = WFC(
+            example_terminals,
+            example.adjacencies,
+            self.grid_extent,
+            default_weights=example.default_weights,
+        )
+
     def init_gui(self):
-        self.menu_frame = tk.Frame(master=self.frame, width=200, height=600, bg="red")
+        b_w, b_h = 10, 1
+        self.menu_frame = tk.Frame(width=200, height=600, bg="red")
         label = tk.Label(master=self.menu_frame, text="SAMPLE TEXT")
-        button = tk.Button(master=self.menu_frame, bg="green", command=self.prt)
+        button = tk.Button(
+            master=self.menu_frame,
+            text="test",
+            bg="green",
+            command=self.prt,
+            width=b_w,
+            height=b_h,
+        )
+
+        self.option_frame = tk.Frame(master=self.menu_frame)
         button.pack()
-        self.menu_frame.pack(anchor=tk.CENTER)
+        self.option_frame.pack(anchor=tk.W)
+        self.menu_frame.pack(anchor=tk.E)
+        self.menu_frame.pack_propagate(0)
+        self.init_gui_example_options()
         label.pack()
+
+    def init_gui_example_options(self):
+        options = []
+        var = tk.StringVar()
+        i = 0
+        for example in self.examples.keys():
+            button = tk.Radiobutton(
+                master=self.option_frame,
+                text=str(example),
+                variable=var,
+                value=str(example),
+                command=lambda: self.example_option_select(var.get()),
+            )
+            i += 1
+
+            options.append(button)
+            button.deselect()
+            button.pack(anchor=tk.W)
+        options[0].select()
+        button = tk.Button(
+            master=self.option_frame,
+            text="Apply selection",
+            command=lambda: self.apply_example_select(var.get()),
+            width=10,
+            height=1,
+        )
+        button.pack(anchor=tk.W)
+        return
+
+    def example_option_select(self, var):
+        print(var)
+        if self.active_example is not var:
+            pass
+        return
+
+    def apply_example_select(self, name):
+        if self.active_example is not name:
+            self.active_example = name
+            print(f"Selected {name}")
+            example = self.examples[self.active_example]
+            self.reset_models()
+            self.wfc = WFC(
+                {t: self.terminals[t] for t in example.terminal_ids},
+                example.adjacencies,
+                default_weights=example.default_weights,
+                grid_extent=self.grid_extent,
+            )
+
+        pass
+
+    def reset_models(self):
+        self.clear_models()
+        self.shown_model_index = 0
+        self.pending_models = 0
 
     def init_camera_params(self, grid_w, grid_h, grid_d, unit_dims):
         self.unit_dims = unit_dims
@@ -325,6 +404,11 @@ class WFCAnimator(Animator):
 
         self.make_model(origin_coord, extent, path, colour, is_hidden=is_hidden)
 
+    def clear_models(self):
+        for m in self.models:
+            self.models[m].remove_node()
+        self.models = {}
+
     def colour_variation(
         self, colour: Colour, colour_variation=Colour(0.1, 0.1, 0.1, 0)
     ):
@@ -353,9 +437,6 @@ class WFCAnimator(Animator):
             self.paused = True
         if self.hide_model(self.shown_model_index) and self.shown_model_index > 0:
             self.shown_model_index -= 1
-
-    def add_colour_mode(self, x, y, z, new_colour: Colour):
-        self.colours.get(x, y, z).put(self.make_material(new_colour))
 
     def play(self, task):
         if self.delta_acc >= self.step_size or self.pending_models > 0:
@@ -418,22 +499,20 @@ terminals, adjs, def_w = Toy.example_rotated_2d()
 # grid_extent = Coord(5, 1, 5)
 grid_extent = Coord(5, 5, 5)
 # grid_extent = Coord(16, 16, 16)
-start_coord = grid_extent * Coord(0.5, 0, 0.5)
-start_coord = Coord(int(start_coord.x), int(start_coord.y), int(start_coord.z))
+
 
 start_time = time()
 wfc = WFC(
     terminals,
     adjs,
     grid_extent=grid_extent,
-    start_coord=start_coord,
     default_weights=def_w,
 )
 wfc_init_time = time() - start_time
 print(f"WFC init: {wfc_init_time}")
 
 anim = WFCAnimator(
-    wfc, grid_extent.x, grid_extent.y, grid_extent.z, unit_dims=Coord(1, 1, 1)
+    grid_extent.x, grid_extent.y, grid_extent.z, unit_dims=Coord(1, 1, 1)
 )
 # anim.full_throttle()
 anim_init_time = time() - start_time - wfc_init_time
