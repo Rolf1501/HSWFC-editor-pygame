@@ -148,7 +148,7 @@ class WFCAnimator(Animator):
         return
 
     def apply_example_select(self, name):
-        if self.active_example is not name:
+        if self.active_example != name:
             self.active_example = name
             print(f"Selected {name}")
             example = self.examples[self.active_example]
@@ -492,8 +492,7 @@ comm.silence()
 # terminals, adjs, def_w = Toy().example_two_tiles_3D()
 # terminals, adjs, def_w = Toy.example_three_tiles_3d_fallback()
 terminals, adjs, def_w = Toy.example_rotated_2d()
-
-# terminals, adjs, def_w = Toy().example_two_tiles2()
+terminals, adjs, def_w = Toy.example_two_tiles2()
 
 # grid_extent = Coord(50, 1, 50)
 # grid_extent = Coord(5, 1, 5)

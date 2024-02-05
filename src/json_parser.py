@@ -17,6 +17,7 @@ class JSONParser:
         self.terminal_path = self.json_path.joinpath(self.terminal_file)
         self.examples_path = self.json_path.joinpath(self.examples_file)
         self._init_file(self.terminal_path)
+        self._init_file(self.examples_path)
 
     def _init_file(self, path: Path):
         if not exists(path.parent):
@@ -60,7 +61,7 @@ class JSONParser:
             examples = {e: Example.from_json(e_json[e]) for e in e_json.keys()}
         return examples
 
-    def write_terminals(self, terminals: list[Terminal]):
+    def write_terminals(self, terminals: dict[Terminal]):
         for t in terminals:
             self.append_terminal(terminals[t], t)
 
