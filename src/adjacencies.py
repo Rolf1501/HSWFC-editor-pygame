@@ -7,6 +7,7 @@ from properties import Properties
 from terminal import Terminal
 from coord import Coord
 from communicator import Communicator
+from json_meta import JSONMeta
 
 comm = Communicator()
 
@@ -22,7 +23,7 @@ class Relation:
 
 
 @dataclass
-class Adjacency:
+class Adjacency(JSONMeta):
     source: int
     allowed_neighbours: list[Relation]
     offset: Offset
@@ -32,9 +33,6 @@ class Adjacency:
     def __post_init__(self):
         if isinstance(self.allowed_neighbours, set):
             self.allowed_neighbours = list(self.allowed_neighbours)
-        self.allowed_neighbours = [
-            Relation(**a) if isinstance(a, dict) else a for a in self.allowed_neighbours
-        ]
 
     def to_json(self):
         return {
@@ -44,6 +42,18 @@ class Adjacency:
             "symmetric": self.symmetric,
             "properties": self.properties,
         }
+
+    @classmethod
+    def from_json(cls, jsn):
+        source = jsn["source"]
+        allowed_neighbours = [
+            Relation(**a) if isinstance(a, dict) else a
+            for a in jsn["allowed_neighbours"]
+        ]
+        offset = Offset(*jsn["offset"])
+        symmetric = jsn["symmetric"]
+        properties = jsn["properties"]
+        return cls(source, allowed_neighbours, offset, symmetric, properties)
 
 
 class AdjacencyAny(Adjacency):

@@ -6,11 +6,12 @@ from boundingbox import BoundingBox as BB
 from coord import Coord
 from offsets import Offset
 from side_descriptor import SidesDescriptor as SD
-from util_data import Dimensions as D, Cardinals as C, Colour
+from util_data import Cardinals as C, Colour
+from json_meta import JSONMeta
 
 
 @dataclass
-class Terminal:
+class Terminal(JSONMeta):
     extent: Coord  # BB with extent relative to grid units
     colour: Colour
     # up: C = field(default=C.TOP)
@@ -49,6 +50,16 @@ class Terminal:
             "distinct_orientations": self.distinct_orientations,
             "description": self.description,
         }
+
+    @classmethod
+    def from_json(cls, jsn: dict):
+        return cls(
+            extent=Coord(*jsn["extent"]),
+            colour=Colour(*jsn["colour"]),
+            mask=np.asarray(jsn["mask"]),
+            distinct_orientations=jsn["distinct_orientations"],
+            description=jsn["description"],
+        )
 
     def calc_atom_indices(self, mask: np.ndarray):
         # Find all cells in the mask that are not empty, these are the atoms uniquely identified by their index.

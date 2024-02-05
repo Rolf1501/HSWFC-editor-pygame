@@ -7,10 +7,11 @@ from util_data import Cardinals as C, Dimensions as D, Colour
 from coord import Coord
 import numpy as np
 from dataclasses import dataclass
+from json_meta import JSONMeta
 
 
 @dataclass
-class Example:
+class Example(JSONMeta):
     name: str
     terminal_ids: list[int]
     adjacencies: list[Adjacency]
@@ -26,6 +27,10 @@ class Example:
             return [(t, w) for t, w in self.default_weights.items()]
         return []
 
+    @staticmethod
+    def default_weights_from_list(lst):
+        return {i: j for i, j in lst}
+
     def to_json(self):
         return {
             "name": self.name,
@@ -33,6 +38,15 @@ class Example:
             "adjacencies": [a.to_json() for a in self.adjacencies],
             "default_weights": self.default_weights_to_list(),
         }
+
+    @classmethod
+    def from_json(cls, jsn):
+        return cls(
+            jsn["name"],
+            jsn["terminal_ids"],
+            [Adjacency.from_json(a) for a in jsn["adjacencies"]],
+            Example.default_weights_from_list(jsn["default_weights"]),
+        )
 
 
 class ToyExamples:
