@@ -40,16 +40,15 @@ class WFC:
     grid_extent: Coord = field(default=Coord(3, 3, 3))
     seeds: list[Placement] = field(default=None)
     init_seed: Coord = field(default=None)
-    adj_matrix: AdjacencyMatrix = field(init=False, default=None)
+    start_coord: Coord = field(default=None)
+    default_weights: dict[int, float] = field(default=None)
+    progress: float = field(default=0)
+    adj_matrix: AdjacencyMatrix = field(init=False)
     grid_man: GridManager = field(init=False)
     max_entropy: float = field(init=False)
     collapse_queue: PriorityQueue[Collapse] = field(init=False)
     offsets: list[Offset] = field(init=False)
     prop_queue: Q[Propagation] = field(default=Q(), init=False)
-    start_coord: Coord = field(default=Coord(0, 0, 0))
-    continue_collapse: bool = field(default=True)
-    default_weights: dict[int, float] = field(default=None)
-    progress: float = field(default=0)
 
     counter: int = field(init=False, default=0)
 
@@ -64,6 +63,14 @@ class WFC:
 
         self.max_entropy = self._calc_entropy(len(keys))
         self.grid_man.init_entropy(self.max_entropy)
+
+        if not self.start_coord:
+            self.start_coord = self.grid_extent * Coord(0.5, 0, 0.5)
+            self.start_coord = Coord(
+                int(self.start_coord.x),
+                int(self.start_coord.y),
+                int(self.start_coord.z),
+            )
 
         # Specify the weights per atom.
         if not self.default_weights:
