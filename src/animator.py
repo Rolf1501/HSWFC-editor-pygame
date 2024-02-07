@@ -37,7 +37,7 @@ class Animator(ShowBase):
         self.unit_dims = unit_dims  # Specifies the dimensions of a single cell.
 
         self.init_default_material()
-        self.init_lights()
+        self.init_lights(self.render)
         self.init_camera(default_camera_pos)
         self.init_camera_key_events()
         self.init_camera_mouse_events()
@@ -77,18 +77,18 @@ class Animator(ShowBase):
         # Camera lookat
         self.accept("l", self.camera_lookat)
 
-    def init_lights(self):
+    def init_lights(self, renderer):
         p_light = PointLight("p_light")
         p_light.attenuation = (0.5, 0, 0)
-        p_lnp = self.render.attach_new_node(p_light)
+        p_lnp = renderer.attach_new_node(p_light)
         p_lnp.set_pos(50, 20, 50)
-        self.render.set_light(p_lnp)
+        renderer.set_light(p_lnp)
 
         p_light2 = PointLight("p_light2")
         p_light2.attenuation = (0.9, 0, 0)
-        p_lnp2 = self.render.attach_new_node(p_light2)
+        p_lnp2 = renderer.attach_new_node(p_light2)
         p_lnp2.set_pos(-50, -20, -50)
-        self.render.set_light(p_lnp2)
+        renderer.set_light(p_lnp2)
 
     def init_camera(self, camera_pos):
         self.camera.set_pos(camera_pos)
@@ -131,6 +131,7 @@ class Animator(ShowBase):
 
     def make_model(
         self,
+        parent,
         origin_coord: Coord,
         extent: Coord = Coord(1, 1, 1),
         path="parts/cube.egg",
@@ -152,7 +153,7 @@ class Animator(ShowBase):
             for mat in model.find_all_materials():
                 model.replace_material(mat, self.make_material(colour))
 
-        model.reparent_to(self.render)
+        model.reparent_to(parent)
         if is_hidden:
             model.hide()
 

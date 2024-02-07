@@ -2,6 +2,7 @@ from animator import Animator
 from communicator import Communicator
 from coord import Coord
 from grid import Grid
+from terminal import Terminal
 from toy_examples import ToyExamples as Toy, Example
 from util_data import Cardinals as C
 from wfc import WFC
@@ -76,22 +77,23 @@ class WFCAnimator(Animator):
         display_region = self.camNode.get_display_region(0)
         display_region.set_active(0)
 
-        dr1, self.cam1 = self.create_display_region((0, 1, 0, 0.2))
+        # dr1, self.cam1 = self.create_display_region((0, 1, 0, 0.2))
         dr2, self.cam2 = self.create_display_region((0, 1, 0.2, 1))
+
+        self.terminal_region_area = (0, 1, 0, 0.2)
 
         self.render2 = NodePath("render2")
         self.render2_lookat_pos = Coord(0, 0, 0)
-        self.cam1.reparent_to(self.render2)
+        # self.cam1.reparent_to(self.render2)
 
         self.cam2.reparent_to(self.render)
         dummy_node = NodePath("dummy")
         dummy_node.reparent_to(self.render)
-        self.cam2.reparent_to(dummy_node)
         model = self.loader.loadModel("parts/cube.egg")
         self.cam2.set_pos(10, 10, 10)
         self.cam2.look_at((0, 0, 0), (0, 1, 0))
 
-        self.attach_display_region_mouse_watcher(dr1)
+        # self.attach_display_region_mouse_watcher(dr1)
         self.attach_display_region_mouse_watcher(dr2)
 
         self.disable_mouse()
@@ -107,24 +109,76 @@ class WFCAnimator(Animator):
         self.init_tasks()
         self.init_axes()
         self.init_gui()
+        self.init_terminal_views()
 
         self.frame.mainloop()
 
     def attach_display_region_mouse_watcher(self, display_region: DisplayRegion):
         mw = MouseWatcher(name=f"{len(self.mouse_watchers)}")
         mw.set_display_region(display_region)
+        print(mw.get_display_region())
         self.mouseWatcher.get_parent().attach_new_node(mw)
         self.mouse_watchers.append(mw)
+
+    def init_terminal_views(self):
+        n_views = len(self.terminals.keys())
+        area = self.terminal_region_area
+        self.terminal_region_area_frame = ttk.Frame()
+        self.terminal_region_area_frame.pack(anchor=tk.S, fill=tk.BOTH, side=tk.BOTTOM)
+
+        view_width = (area[1] - area[0]) / float(n_views) if n_views > 0 else None
+        view_height = area[3] - area[2]
+        counter = 0
+        self.terminal_regions = {}
+        i = 0
+        self.terminal_region_area_frame.grid_columnconfigure(
+            list(range(n_views)), weight=1, uniform="column"
+        )
+
+        for t in self.terminals:
+            label = ttk.Label(
+                self.terminal_region_area_frame,
+                text=f"Part {t}",
+                style="TerminalView.TLabel",
+                anchor=tk.CENTER,
+            )
+            label.grid(row=0, column=i, sticky=tk.EW)
+            i += 1
+            print("TERMINAL: ", t)
+            origin_x, origin_y = (
+                counter * view_width + area[0],
+                area[2],
+            )
+            dr, cam = self.create_display_region(
+                (origin_x, origin_x + view_width, origin_y, origin_y + view_height)
+            )
+            render_t = NodePath(f"render_t_{t}")
+            self.init_lights(render_t)
+            cam.reparent_to(render_t)
+            cam.set_pos(10, 10, 10)
+            cam.look_at((0, 0, 0), (0, 1, 0))
+            self.terminal_regions[t] = dr, cam, render_t
+            # model = self.loader.loadModel("parts/cube.egg")
+            # model.reparent_to(render_t)
+            self.attach_display_region_mouse_watcher(dr)
+            counter += 1
+
+            self.render_terminal(self.terminals[t], render_t)
 
     def create_display_region(self, dims):
         self.make_camera(self.win, displayRegion=dims)
         dr = self.win.get_display_region(len(self.win.get_display_regions()) - 1)
-        print(len(self.camList))
         cam: NodePath = self.camList[len(self.camList) - 1]
-        cam.node().get_lens().set_aspect_ratio(
-            float(dr.get_pixel_width()) / float(dr.get_pixel_height())
-        )
+
+        self.scale_cam_to_ratio(cam, dr.get_pixel_width(), dr.get_pixel_height())
+
         return dr, cam
+
+    def scale_cam_to_ratio(self, cam: NodePath, width, height):
+        if cam and width > 0 and height > 0:
+            cam.node().get_lens().set_aspect_ratio(float(width) / float(height))
+            return True
+        return False
 
     def align_right(self, element_width, frame_width):
         return frame_width * 0.5 - element_width
@@ -153,9 +207,7 @@ class WFCAnimator(Animator):
 
     def init_gui(self):
         self.style = ttk.Style()
-        self.style.configure(
-            "Menu.TFrame", background="red", padx=5, pady=5, fill="both"
-        )
+        self.style.configure("Menu.TFrame", padx=5, pady=5, fill="both")
         self.init_hide_menu()
 
         self.menu_frame = ttk.Frame(self.frame)
@@ -261,11 +313,13 @@ class WFCAnimator(Animator):
         self.adj_canvas.configure(yscrollcommand=self.adj_scroll.set)
         self.adj_canvas.pack()
 
-        part_adjacencies = self.wfc.adj_matrix.get_all_part_adjacencies_as_id()
-        i = 0
-
         self.adj_listing = ttk.Frame(self.adj_canvas)
         self.adj_listing.grid(row=0, column=0, sticky=tk.EW)
+        self.list_active_adj_constraints()
+
+    def list_active_adj_constraints(self):
+        part_adjacencies = self.wfc.adj_matrix.get_all_part_adjacencies_as_id()
+        i = 0
         label = ttk.Label(
             self.adj_listing,
             text=f"Showing adjacency constraints in \n{self.active_example}",
@@ -289,7 +343,7 @@ class WFCAnimator(Animator):
                 i += 1
 
     def position_menu(self):
-        self.menu_frame.pack(anchor=tk.E, expand=1, fill="y")
+        self.menu_frame.pack(anchor=tk.NE, expand=1)
 
     def init_hide_menu(self):
         def toggle_menu():
@@ -378,6 +432,9 @@ class WFCAnimator(Animator):
     def apply_example_select(self, name):
         if self.active_example != name:
             self.active_example = name
+            for child in self.adj_listing.winfo_children():
+                child.destroy()
+            self.list_active_adj_constraints()
             print(f"Selected {name}")
             self.reset()
 
@@ -429,6 +486,11 @@ class WFCAnimator(Animator):
             self.aspect_ratio = self.window_width * 1.0 / self.window_height
 
             self.props.setSize(self.window_width, self.window_height)
+            for dr in self.win.display_regions:
+                if not self.scale_cam_to_ratio(
+                    dr.get_camera(), dr.get_pixel_width(), dr.get_pixel_height()
+                ):
+                    print("COULDNT DO: DR", dr)
             self.win.request_properties(self.props)
             print("Ratio changed!", self.aspect_ratio)
 
@@ -609,6 +671,7 @@ class WFCAnimator(Animator):
 
     def add_model(
         self,
+        parent,
         origin_coord: Coord,
         extent: Coord = Coord(1, 1, 1),
         path="parts/1x1x1.glb",
@@ -621,7 +684,7 @@ class WFCAnimator(Animator):
         """
 
         model, key = self.make_model(
-            origin_coord, extent, path, colour, is_hidden=is_hidden
+            parent, origin_coord, extent, path, colour, is_hidden=is_hidden
         )
         self.models[key] = model
 
@@ -689,7 +752,26 @@ class WFCAnimator(Animator):
             self.pending_models += len(terminal.oriented_indices[orientation])
             for atom_index in terminal.oriented_indices[orientation]:
                 model_path = terminal.atom_index_to_id_mapping[atom_index].path
-                self.add_model(coord + atom_index, path=model_path, colour=colour_v)
+                self.add_model(
+                    self.render,
+                    coord + atom_index,
+                    path=model_path,
+                    colour=colour_v,
+                )
+
+    def render_terminal(self, terminal: Terminal, parent):
+        for atom_index in terminal.oriented_indices[0]:
+            atom = terminal.atom_index_to_id_mapping[atom_index]
+            model_path = atom.path
+            print("T COLOUR: ", terminal.colour)
+            self.make_model(
+                parent,
+                atom_index,
+                path=model_path,
+                colour=terminal.colour,
+                is_hidden=False,
+            )
+        pass
 
 
 comm.silence()
