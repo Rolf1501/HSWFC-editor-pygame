@@ -3,9 +3,11 @@ from communicator import Communicator
 from coord import Coord
 from grid import Grid
 from toy_examples import ToyExamples as Toy, Example
+from util_data import Cardinals as C
 from wfc import WFC
 from direct.gui.DirectGui import *
 import tkinter as tk
+from tkinter import ttk
 from json_parser import JSONParser as J
 
 from panda3d.core import (
@@ -14,6 +16,12 @@ from panda3d.core import (
     WindowProperties,
     Camera,
     OrthographicLens,
+    PerspectiveLens,
+    MouseWatcher,
+    MouseWatcherRegion,
+    DisplayRegion,
+    LQuaternionf,
+    LVecBase3,
 )
 from util_data import Colour
 from queue import Queue as Q
@@ -47,6 +55,8 @@ class WFCAnimator(Animator):
         self.frame.geometry(f"{self.window_width}x{self.window_height}")
         self.win.request_properties(self.props)
 
+        self.mouse_watchers: list[MouseWatcher] = []
+
         self.aspect_ratio = self.get_aspect_ratio()
 
         self.manual()
@@ -61,6 +71,33 @@ class WFCAnimator(Animator):
         self.active_example = next(iter(self.examples))
         self.grid_extent = Coord(grid_w, grid_h, grid_d)
 
+        self.button_width, self.button_height = 15, 1
+
+        display_region = self.camNode.get_display_region(0)
+        display_region.set_active(0)
+
+        dr1, self.cam1 = self.create_display_region((0, 1, 0, 0.2))
+        dr2, self.cam2 = self.create_display_region((0, 1, 0.2, 1))
+
+        self.render2 = NodePath("render2")
+        self.render2_lookat_pos = Coord(0, 0, 0)
+        self.cam1.reparent_to(self.render2)
+
+        self.cam2.reparent_to(self.render)
+        dummy_node = NodePath("dummy")
+        dummy_node.reparent_to(self.render)
+        self.cam2.reparent_to(dummy_node)
+        model = self.loader.loadModel("parts/cube.egg")
+        self.cam2.set_pos(10, 10, 10)
+        self.cam2.look_at((0, 0, 0), (0, 1, 0))
+
+        self.attach_display_region_mouse_watcher(dr1)
+        self.attach_display_region_mouse_watcher(dr2)
+
+        self.disable_mouse()
+
+        model.reparent_to(self.render2)
+
         self.init_wfc()
 
         # self.init_info_grid()
@@ -73,8 +110,21 @@ class WFCAnimator(Animator):
 
         self.frame.mainloop()
 
-    def prt(self):
-        print("TESTING!")
+    def attach_display_region_mouse_watcher(self, display_region: DisplayRegion):
+        mw = MouseWatcher(name=f"{len(self.mouse_watchers)}")
+        mw.set_display_region(display_region)
+        self.mouseWatcher.get_parent().attach_new_node(mw)
+        self.mouse_watchers.append(mw)
+
+    def create_display_region(self, dims):
+        self.make_camera(self.win, displayRegion=dims)
+        dr = self.win.get_display_region(len(self.win.get_display_regions()) - 1)
+        print(len(self.camList))
+        cam: NodePath = self.camList[len(self.camList) - 1]
+        cam.node().get_lens().set_aspect_ratio(
+            float(dr.get_pixel_width()) / float(dr.get_pixel_height())
+        )
+        return dr, cam
 
     def align_right(self, element_width, frame_width):
         return frame_width * 0.5 - element_width
@@ -92,75 +142,244 @@ class WFCAnimator(Animator):
             default_weights=example.default_weights,
         )
 
-    def init_gui(self):
-        b_w, b_h = 10, 1
-        self.menu_frame = tk.Frame(width=200, height=600, bg="red")
-        label = tk.Label(master=self.menu_frame, text="SAMPLE TEXT")
-        button = tk.Button(
-            master=self.menu_frame,
-            text="test",
-            bg="green",
-            command=self.prt,
-            width=b_w,
-            height=b_h,
-        )
+    @staticmethod
+    def toggle_widget_visibility(widget, position, *args):
+        if widget.winfo_ismapped():
+            widget.forget()
+            return False
+        else:
+            position(*args)
+            return True
 
-        self.option_frame = tk.Frame(master=self.menu_frame)
-        button.pack()
-        self.option_frame.pack(anchor=tk.W)
-        self.menu_frame.pack(anchor=tk.E)
-        self.menu_frame.pack_propagate(0)
+    def init_gui(self):
+        self.style = ttk.Style()
+        self.style.configure(
+            "Menu.TFrame", background="red", padx=5, pady=5, fill="both"
+        )
+        self.init_hide_menu()
+
+        self.menu_frame = ttk.Frame(self.frame)
+        self.position_menu()
+        self.menu_tabs = ttk.Notebook(self.menu_frame)
+        self.menu_tabs.pack()
+        self.adjacency_menu_frame = ttk.Frame(
+            master=self.menu_tabs, width=200, style="Menu.TFrame"
+        )
+        self.general_menu_frame = ttk.Frame(
+            master=self.menu_tabs, width=200, style="Menu.TFrame"
+        )
+        self.menu_tabs.add(self.general_menu_frame, text="General")
+        self.menu_tabs.add(self.adjacency_menu_frame, text="Constraints")
+
         self.init_gui_example_options()
-        label.pack()
+        self.init_gui_extent()
+        self.init_gui_adjacency_viewer()
+
+        self.init_camera_controls()
+
+    def init_camera_controls(self):
+        self.prev_mouse_x, self.prev_mouse_y = 0, 0
+        self.disable_mouse()
+        self.accept("mouse3", self.start_panning)
+        self.accept("mouse3-up", self.stop_panning)
+        self.accept("mouse1", self.start_rotating)
+        self.accept("mouse1-up", self.stop_rotating)
+
+    def get_delta_mouse_pos(self, mouse_x, mouse_y):
+        return self.prev_mouse_x - mouse_x, self.prev_mouse_y - mouse_y
+
+    def prep_camera_transformation(self):
+        for i in self.mouse_watchers:
+            if i.has_mouse():
+                self.prev_mouse_x, self.prev_mouse_y = i.get_mouse()
+                self.active_cam = i.get_display_region().get_camera()
+                break
+
+    def start_panning(self):
+        self.prep_camera_transformation()
+        self.panning_task = self.task_mgr.add(self.pan_camera, "pan_camera")
+
+    def stop_panning(self):
+        self.task_mgr.remove(self.panning_task)
+
+    def pan_camera(self, task):
+        mw: MouseWatcher = self.mouseWatcherNode
+        strength = 20
+        if mw.has_mouse():
+            mouse_pos = mw.get_mouse()
+            delta_x, delta_y = self.get_delta_mouse_pos(*mouse_pos)
+            self.active_cam.set_pos(
+                self.active_cam, delta_x * strength, delta_y * strength, 0
+            )
+
+            self.prev_mouse_x, self.prev_mouse_y = mouse_pos
+        return task.cont
+
+    def start_rotating(self):
+        self.prep_camera_transformation()
+        self.rotating_task = self.task_mgr.add(self.rotate_camera, "rotate_camera")
+
+    def stop_rotating(self):
+        self.task_mgr.remove(self.rotating_task)
+
+    def rotate_camera(self, task):
+        mw: MouseWatcher = self.mouseWatcherNode
+        strength = 20
+        if mw.has_mouse():
+            mouse_pos = mw.get_mouse()
+            delta_x, delta_y = self.get_delta_mouse_pos(*mouse_pos)
+
+            prev_pos = self.active_cam.get_pos()
+            self.active_cam.set_pos(
+                self.active_cam, delta_x * strength, 0, delta_y * strength
+            )
+
+            cam_pos = self.active_cam.get_pos()
+            up = LVecBase3(0, 1, 0)
+
+            eps_z = 0.001
+            dotp = cam_pos.dot(up)
+            if abs(dotp) >= eps_z:
+                self.prev_mouse_x, self.prev_mouse_y = mouse_pos
+                self.active_cam.look_at(self.render2_lookat_pos, up)
+            else:
+                self.active_cam.set_pos(prev_pos)
+        return task.cont
+
+    def init_gui_adjacency_viewer(self):
+        self.adj_canvas = tk.Canvas(master=self.adjacency_menu_frame)
+        self.adj_canvas.configure(scrollregion=self.adj_canvas.bbox("all"))
+        self.style.configure("Constraint.Vertical.TScrollbar", fill="y")
+        self.adj_scroll = ttk.Scrollbar(
+            master=self.adj_canvas,
+            orient=tk.VERTICAL,
+            command=self.adj_canvas.yview,
+            style="Constraint.Vertical.TScrollbar",
+        )
+        self.adj_scroll.grid(row=0, column=1, sticky=tk.NSEW)
+
+        self.adj_canvas.configure(yscrollcommand=self.adj_scroll.set)
+        self.adj_canvas.pack()
+
+        part_adjacencies = self.wfc.adj_matrix.get_all_part_adjacencies_as_id()
+        i = 0
+
+        self.adj_listing = ttk.Frame(self.adj_canvas)
+        self.adj_listing.grid(row=0, column=0, sticky=tk.EW)
+        label = ttk.Label(
+            self.adj_listing,
+            text=f"Showing adjacency constraints in \n{self.active_example}",
+        )
+        label.grid(row=i, column=0, sticky=tk.EW)
+        i += 1
+        for part_index in part_adjacencies:
+            part = part_adjacencies[part_index]
+            label = ttk.Label(
+                self.adj_listing,
+                text=f"Adjacencies of Part: {part_index}",
+            )
+            label.grid(row=i, column=0, sticky=tk.EW)
+            i += 1
+            for offset in part:
+                adjs = part[offset]
+                lab = ttk.Label(
+                    self.adj_listing, text=f"\t{C(offset)}: {str(adjs)[1:-1]}"
+                )
+                lab.grid(row=i, column=0, sticky=tk.EW)
+                i += 1
+
+    def position_menu(self):
+        self.menu_frame.pack(anchor=tk.E, expand=1, fill="y")
+
+    def init_hide_menu(self):
+        def toggle_menu():
+            self.toggle_menu.config(
+                text=f"{'Hide' if self.toggle_widget_visibility(self.menu_frame, self.position_menu) else 'Show'} menu"
+            )
+
+        self.toggle_menu = ttk.Button(
+            master=self.frame, text="Hide menu", command=toggle_menu
+        )
+        self.toggle_menu.pack(anchor=tk.NE)
 
     def init_gui_example_options(self):
-        options = []
+        self.option_frame = ttk.Frame(master=self.general_menu_frame)
+        self.option_frame.pack(anchor=tk.W)
+        options: list[ttk.Radiobutton] = []
         var = tk.StringVar()
         i = 0
         for example in self.examples.keys():
-            button = tk.Radiobutton(
+            button = ttk.Radiobutton(
                 master=self.option_frame,
                 text=str(example),
                 variable=var,
                 value=str(example),
-                command=lambda: self.example_option_select(var.get()),
             )
             i += 1
 
             options.append(button)
-            button.deselect()
             button.pack(anchor=tk.W)
-        options[0].select()
-        button = tk.Button(
+        options[0].invoke()
+        self.style.configure("TButton", height=self.button_height)
+        button = ttk.Button(
             master=self.option_frame,
             text="Apply selection",
             command=lambda: self.apply_example_select(var.get()),
-            width=10,
-            height=1,
         )
-        button.pack(anchor=tk.W)
-        return
+        button.pack()
 
-    def example_option_select(self, var):
-        print(var)
-        if self.active_example is not var:
-            pass
-        return
+    def init_gui_extent(self):
+        def make_scale(text):
+            s = tk.Scale(
+                master=self.extent_frame,
+                from_=1,
+                to=50,
+                length=200,
+                orient=tk.HORIZONTAL,
+                label=text,
+            )
+            return s
+
+        self.extent_frame = ttk.Frame(master=self.general_menu_frame)
+        self.extent_w = make_scale("Grid width")
+        self.extent_h = make_scale("Grid height")
+        self.extent_d = make_scale("Grid depth")
+
+        self.extent_w.set(self.grid_extent.x)
+        self.extent_h.set(self.grid_extent.y)
+        self.extent_d.set(self.grid_extent.z)
+
+        self.extent_button = ttk.Button(
+            master=self.extent_frame,
+            text="Apply grid changes",
+            command=lambda: self.apply_extent(
+                Coord(
+                    int(self.extent_w.get()),
+                    int(self.extent_h.get()),
+                    int(self.extent_d.get()),
+                )
+            ),
+        )
+        self.extent_w.pack()
+        self.extent_h.pack()
+        self.extent_d.pack()
+
+        self.extent_button.pack()
+        self.extent_frame.pack()
+
+    def apply_extent(self, extent: Coord):
+        self.grid_extent = extent
+        self.reset()
+
+    def reset(self):
+        self.reset_models()
+        self.init_wfc()
 
     def apply_example_select(self, name):
         if self.active_example != name:
             self.active_example = name
             print(f"Selected {name}")
-            example = self.examples[self.active_example]
-            self.reset_models()
-            self.wfc = WFC(
-                {t: self.terminals[t] for t in example.terminal_ids},
-                example.adjacencies,
-                default_weights=example.default_weights,
-                grid_extent=self.grid_extent,
-            )
-
-        pass
+            self.reset()
 
     def reset_models(self):
         self.clear_models()
@@ -178,7 +397,6 @@ class WFCAnimator(Animator):
             default_camera_pos=default_cam_pos,
             unit_dims=unit_dims,
         )
-        pass
 
     def init_collider(self):
         self.collision_traverser = CollisionTraverser()
@@ -402,7 +620,10 @@ class WFCAnimator(Animator):
         The model is added to a dictionary, so it can be modified later.
         """
 
-        self.make_model(origin_coord, extent, path, colour, is_hidden=is_hidden)
+        model, key = self.make_model(
+            origin_coord, extent, path, colour, is_hidden=is_hidden
+        )
+        self.models[key] = model
 
     def clear_models(self):
         for m in self.models:
@@ -473,56 +694,12 @@ class WFCAnimator(Animator):
 
 comm.silence()
 
-
-# terminals, adjs, def_w = Toy().example_slanted()
-# terminals, adjs, def_w = Toy().example_zebra_horizontal()
-# terminals, adjs, def_w = Toy().example_zebra_vertical()
-# terminals, adjs, def_w = Toy().example_zebra_horizontal_3()
-# terminals, adjs, def_w = Toy().example_zebra_vertical_3()
-# terminals, adjs, def_w = Toy().example_big_tiles()
-# terminals, adjs, def_w = Toy().example_meta_tiles_fit_area()
-# terminals, adjs, def_w = Toy().example_meta_tiles_fit_area_simple()
-
-# terminals, adjs, def_w = Toy().example_meta_tiles_simple()
-# terminals, adjs, def_w = Toy().example_meta_tiles_layered()
-# terminals, adjs, def_w = Toy().example_meta_tiles_2()
-# terminals, adjs, def_w = Toy().example_meta_tiles()
-# terminals, adjs, def_w = Toy().example_meta_tiles_zebra_horizontal()
-# terminals, adjs, def_w = Toy().example_two_tiles()
-# terminals, adjs, def_w = Toy().example_two_tiles_3D()
-# terminals, adjs, def_w = Toy.example_three_tiles_3d_fallback()
-terminals, adjs, def_w = Toy.example_rotated_2d()
-terminals, adjs, def_w = Toy.example_two_tiles2()
-
 # grid_extent = Coord(50, 1, 50)
 # grid_extent = Coord(5, 1, 5)
 grid_extent = Coord(5, 5, 5)
 # grid_extent = Coord(16, 16, 16)
 
 
-start_time = time()
-wfc = WFC(
-    terminals,
-    adjs,
-    grid_extent=grid_extent,
-    default_weights=def_w,
-)
-wfc_init_time = time() - start_time
-print(f"WFC init: {wfc_init_time}")
-
-anim = WFCAnimator(
-    grid_extent.x, grid_extent.y, grid_extent.z, unit_dims=Coord(1, 1, 1)
-)
-# anim.full_throttle()
-anim_init_time = time() - start_time - wfc_init_time
-print(f"Anim init time: {anim_init_time}")
-
-print("WFC ready")
-
-# run_time = time() - anim_init_time - wfc_init_time - start_time
-# print(f"Running time: {run_time}")
-
-# print(f"Total elapsed time: {time() - start_time}")
-# wfc.grid_man.grid.print_xz()
+anim = WFCAnimator(*grid_extent, unit_dims=Coord(1, 1, 1))
 
 anim.run()

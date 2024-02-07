@@ -109,6 +109,7 @@ class AdjacencyMatrix:
     atom_adjacency_matrix: dict[Offset, np.ndarray] = field(init=False)
     atom_adjacency_matrix_w: dict[Offset, np.ndarray] = field(init=False)
     part_atom_range_mapping: dict = field(init=False)
+    part_adj_mapping: dict = field(init=False, default=None)
 
     def __post_init__(self):
         self.atom_mapping = bidict()
@@ -130,6 +131,34 @@ class AdjacencyMatrix:
         for offset in self.offsets:
             self.ADJ[offset] = np.full((n_parts, n_parts), False)
             self.ADJ_W[offset] = np.full((n_parts, n_parts), 0.0)
+        self.allow_adjacencies(self.part_adjacencies)
+
+    def get_all_part_adjacencies_as_id(self, use_global_terminal_id=True):
+        if self.part_adj_mapping is not None:
+            return self.part_adj_mapping
+
+        self.part_adj_mapping = {
+            i: {offset: [] for offset in self.offsets}
+            for i in (
+                self.parts_to_index_mapping.keys()
+                if use_global_terminal_id
+                else self.parts_to_index_mapping.inverse.keys()
+            )
+        }
+        for offset in self.ADJ:
+            counter = 0
+            curr = self.ADJ[offset]
+            for j in range(len(curr)):
+                j_i = self.parts_to_index_mapping[j] if use_global_terminal_id else j
+                adjs = np.transpose(curr[j][counter : len(curr)].nonzero()).flatten()
+                counter += 1
+                for a in adjs:
+                    a_i = (
+                        self.parts_to_index_mapping[a] if use_global_terminal_id else a
+                    )
+                    self.part_adj_mapping[j_i][offset].append(a_i)
+                    # self.part_adj_mapping[a][offset.complement()].append(j)
+        return self.part_adj_mapping
 
     def get_n_atoms(self):
         return len(self.atom_mapping.keys())

@@ -20,6 +20,9 @@ class Cardinals(Enum):
         else:
             return Dimensions.X
 
+    def __str__(self) -> str:
+        return self.name
+
 
 class Operations(Enum):
     ORTH = 0

@@ -160,7 +160,6 @@ class Animator(ShowBase):
             model.set_transparency(True)
 
         new_key = len(self.models.keys())
-        self.models[new_key] = model
         return model, new_key
 
     def position_in_grid(self, model: NodePath, pos: Coord, extent: Coord):
