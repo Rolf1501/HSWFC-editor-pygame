@@ -54,6 +54,8 @@ class WFCAnimator(Animator):
         self.props.setOrigin(0, 0)
         self.props.setSize(self.window_width, self.window_height)
         self.frame.geometry(f"{self.window_width}x{self.window_height}")
+        self.tkRoot.title("XWFC Animator")
+
         self.win.request_properties(self.props)
 
         self.mouse_watchers: list[MouseWatcher] = []
@@ -781,7 +783,13 @@ comm.silence()
 grid_extent = Coord(5, 5, 5)
 # grid_extent = Coord(16, 16, 16)
 
-
+t, a, d = Toy.example_rotated_2d_fallback()
+t0, a0, d0 = Toy.example_rotated_2d()
+example = Example("2d fallback", list(t.keys()), a, d)
+example0 = Example("2d", list(t0.keys()), a0, d0)
+j = J()
+j.write_example(example)
+j.write_example(example0)
 anim = WFCAnimator(*grid_extent, unit_dims=Coord(1, 1, 1))
 
 anim.run()

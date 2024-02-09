@@ -1,9 +1,10 @@
 {
-  "example_rotated_2d": {
-    "name": "example_rotated_2d",
+  "2d fallback": {
+    "name": "2d fallback",
     "terminal_ids": [
       0,
-      1
+      1,
+      6
     ],
     "adjacencies": [
       {
@@ -291,8 +292,8 @@
         ],
         "offset": [
           0,
-          1,
-          0
+          0,
+          -1
         ],
         "symmetric": true,
         "properties": []
@@ -309,6 +310,210 @@
           }
         ],
         "offset": [
+          -1,
+          0,
+          0
+        ],
+        "symmetric": true,
+        "properties": []
+      },
+      {
+        "source": 6,
+        "allowed_neighbours": [
+          {
+            "other": 0,
+            "weight": 0.1,
+            "rotations": [
+              0,
+              1
+            ]
+          },
+          {
+            "other": 1,
+            "weight": 0.1,
+            "rotations": [
+              0
+            ]
+          },
+          {
+            "other": 6,
+            "weight": 0.1,
+            "rotations": [
+              0
+            ]
+          }
+        ],
+        "offset": [
+          0,
+          0,
+          1
+        ],
+        "symmetric": true,
+        "properties": []
+      },
+      {
+        "source": 6,
+        "allowed_neighbours": [
+          {
+            "other": 0,
+            "weight": 0.1,
+            "rotations": [
+              0,
+              1
+            ]
+          },
+          {
+            "other": 1,
+            "weight": 0.1,
+            "rotations": [
+              0
+            ]
+          },
+          {
+            "other": 6,
+            "weight": 0.1,
+            "rotations": [
+              0
+            ]
+          }
+        ],
+        "offset": [
+          1,
+          0,
+          0
+        ],
+        "symmetric": true,
+        "properties": []
+      },
+      {
+        "source": 6,
+        "allowed_neighbours": [
+          {
+            "other": 0,
+            "weight": 0.1,
+            "rotations": [
+              0,
+              1
+            ]
+          },
+          {
+            "other": 1,
+            "weight": 0.1,
+            "rotations": [
+              0
+            ]
+          },
+          {
+            "other": 6,
+            "weight": 0.1,
+            "rotations": [
+              0
+            ]
+          }
+        ],
+        "offset": [
+          0,
+          0,
+          -1
+        ],
+        "symmetric": true,
+        "properties": []
+      },
+      {
+        "source": 6,
+        "allowed_neighbours": [
+          {
+            "other": 0,
+            "weight": 0.1,
+            "rotations": [
+              0,
+              1
+            ]
+          },
+          {
+            "other": 1,
+            "weight": 0.1,
+            "rotations": [
+              0
+            ]
+          },
+          {
+            "other": 6,
+            "weight": 0.1,
+            "rotations": [
+              0
+            ]
+          }
+        ],
+        "offset": [
+          -1,
+          0,
+          0
+        ],
+        "symmetric": true,
+        "properties": []
+      },
+      {
+        "source": 6,
+        "allowed_neighbours": [
+          {
+            "other": 0,
+            "weight": 0.1,
+            "rotations": [
+              0,
+              1
+            ]
+          },
+          {
+            "other": 1,
+            "weight": 0.1,
+            "rotations": [
+              0
+            ]
+          },
+          {
+            "other": 6,
+            "weight": 0.1,
+            "rotations": [
+              0
+            ]
+          }
+        ],
+        "offset": [
+          0,
+          1,
+          0
+        ],
+        "symmetric": true,
+        "properties": []
+      },
+      {
+        "source": 6,
+        "allowed_neighbours": [
+          {
+            "other": 0,
+            "weight": 0.1,
+            "rotations": [
+              0,
+              1
+            ]
+          },
+          {
+            "other": 1,
+            "weight": 0.1,
+            "rotations": [
+              0
+            ]
+          },
+          {
+            "other": 6,
+            "weight": 0.1,
+            "rotations": [
+              0
+            ]
+          }
+        ],
+        "offset": [
           0,
           -1,
           0
@@ -317,10 +522,23 @@
         "properties": []
       }
     ],
-    "default_weights": []
+    "default_weights": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        6,
+        0.001
+      ]
+    ]
   },
-  "example_rotated_2d2": {
-    "name": "example_rotated_2d2",
+  "2d": {
+    "name": "2d",
     "terminal_ids": [
       0,
       1

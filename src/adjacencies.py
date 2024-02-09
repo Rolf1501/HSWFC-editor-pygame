@@ -133,7 +133,7 @@ class AdjacencyMatrix:
             self.ADJ_W[offset] = np.full((n_parts, n_parts), 0.0)
         self.allow_adjacencies(self.part_adjacencies)
 
-    def get_all_part_adjacencies_as_id(self, use_global_terminal_id=True):
+    def get_all_part_adjacencies_as_id(self, use_global_terminal_id=False):
         if self.part_adj_mapping is not None:
             return self.part_adj_mapping
 
